@@ -1,0 +1,16 @@
+model,target_year,forecast
+naive,2026,1340527
+naive,2027,1340527
+naive,2028,1340527
+naive,2029,1340527
+naive,2030,1340527
+drift,2026,1341870.0
+drift,2027,1343213.1
+drift,2028,1344556.1
+drift,2029,1345899.1
+drift,2030,1347242.1
+linear_trend,2026,1408379.8
+linear_trend,2027,1412903.5
+linear_trend,2028,1417427.2
+linear_trend,2029,1421950.9
+linear_trend,2030,1426474.6
