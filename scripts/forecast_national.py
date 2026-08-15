@@ -2,7 +2,7 @@
 """Week 2 national forecasting & rolling-origin backtesting for MHCLG Live Table 600.
 
 Loads the validated England-total series (Area code E92000001) from
-data/processed/regional_waiting_lists_long.csv, fits four dependency-light
+data/processed/regional_waiting_lists_long.csv, fits five dependency-light
 benchmark forecasting models, evaluates them with leakage-free rolling-origin
 ("walk-forward") backtesting at 1/2/3/5-year horizons, writes result CSVs to
 outputs/, and produces two comparison charts under outputs/figures/.
@@ -16,6 +16,9 @@ Models (all pure Python, no third-party forecasting libraries):
   - ses        : simple exponential smoothing; forecast is flat at the
                  fitted level, with alpha grid-searched (0.01-0.99) to
                  minimise in-sample SSE on the training window only.
+  - holt       : Holt's linear (double) exponential smoothing; forecast is
+                 the fitted level plus h * fitted trend, with (alpha, beta)
+                 jointly grid-searched (0.01-0.99 each) on in-sample SSE.
 
 Backtesting design (see docs/national_forecast_methodology.md for the full
 rationale):
@@ -78,18 +81,21 @@ ORANGE = "#c1720a"   # naive / categorical slot 2
 GREEN = "#3f8f5f"    # drift / categorical slot 3
 RED = "#e34948"      # linear_trend / diverging pole
 VIOLET = "#4a3aa7"   # ses / categorical slot 7
+MAGENTA = "#e87ba4"  # holt / categorical slot 5
 
 MODEL_COLORS = {
     "naive": ORANGE,
     "drift": GREEN,
     "linear_trend": RED,
     "ses": VIOLET,
+    "holt": MAGENTA,
 }
 MODEL_LABELS = {
     "naive": "Naive (last observation)",
     "drift": "Drift",
     "linear_trend": "Linear trend (OLS)",
     "ses": "Simple exponential smoothing",
+    "holt": "Holt's linear (level + trend)",
 }
 
 
@@ -189,11 +195,57 @@ def ses_forecast(train_years, train_values, horizons):
     return {h: level for h in horizons}
 
 
+def holt_level_trend(train_values, alpha, beta):
+    """Run Holt's linear (double exponential smoothing) recursion; return (level, trend)."""
+    level = train_values[0]
+    trend = train_values[1] - train_values[0] if len(train_values) > 1 else 0.0
+    for y in train_values[1:]:
+        new_level = alpha * y + (1 - alpha) * (level + trend)
+        new_trend = beta * (new_level - level) + (1 - beta) * trend
+        level, trend = new_level, new_trend
+    return level, trend
+
+
+def holt_in_sample_sse(train_values, alpha, beta):
+    """One-step-ahead in-sample SSE for a given (alpha, beta) pair (training data only)."""
+    level = train_values[0]
+    trend = train_values[1] - train_values[0] if len(train_values) > 1 else 0.0
+    sse = 0.0
+    for y in train_values[1:]:
+        sse += (y - (level + trend)) ** 2
+        new_level = alpha * y + (1 - alpha) * (level + trend)
+        new_trend = beta * (new_level - level) + (1 - beta) * trend
+        level, trend = new_level, new_trend
+    return sse
+
+
+def holt_forecast(train_years, train_values, horizons):
+    """Holt's linear exponential smoothing; forecast = fitted level + h * fitted trend.
+
+    Unlike ses_forecast, this has a trend term, so it can extrapolate a slope rather
+    than a flat level. (alpha, beta) are chosen by a joint grid search (0.01-0.99,
+    step 0.01 each) minimising one-step-ahead in-sample SSE on the training window
+    only - no leakage, same principle as ses_forecast's alpha search.
+    """
+    best_params, best_sse = (0.5, 0.5), float("inf")
+    for ai in range(1, 100):
+        alpha = ai / 100
+        for bi in range(1, 100):
+            beta = bi / 100
+            sse = holt_in_sample_sse(train_values, alpha, beta)
+            if sse < best_sse:
+                best_sse = sse
+                best_params = (alpha, beta)
+    level, trend = holt_level_trend(train_values, *best_params)
+    return {h: level + h * trend for h in horizons}
+
+
 MODELS = {
     "naive": naive_forecast,
     "drift": drift_forecast,
     "linear_trend": linear_trend_forecast,
     "ses": ses_forecast,
+    "holt": holt_forecast,
 }
 
 
