@@ -45,20 +45,20 @@ A milder, related issue remains and is **not** treated as a bug (see §4): at a 
 
 | Model | 1y MAPE | 2y MAPE | 3y MAPE | 5y MAPE |
 | --- | ---: | ---: | ---: | ---: |
-| ets_damped | **4.09%** | **8.51%** | **13.59%** | 26.16% |
+| ets_damped | **4.09%** | **8.51%** | 13.59% | 26.16% |
 | arima | 4.19% | 9.10% | 14.50% | 30.97% |
 | holt | 4.25% | 9.25% | 14.74% | 31.36% |
-| naive | 4.71% | 9.03% | 13.32% | **22.10%** |
+| naive | 4.71% | 9.03% | **13.32%** | **22.10%** |
 | ses | 4.75% | 9.06% | 13.36% | 22.12% |
 | drift | 5.03% | 9.82% | 14.71% | 25.89% |
 | linear_trend | 19.16% | 22.71% | 26.41% | 34.16% |
 
 **Headline findings:**
 
-1. **`ets_damped` is the new best model at 1-, 2- and 3-year horizons**, beating every one of the five original benchmarks including the previously-best `holt` and `naive`/`ses`. This confirms the hypothesis behind adding it: damping fixes most of `holt`'s overshoot problem while keeping its ability to track a genuine trend, at every horizon except the longest.
-2. **At 5-year, naive and SES remain best**, and `ets_damped` (26.16%) and `drift` (25.89%) — while clearly better than undamped `holt` (31.36%) — still can't match naive/SES (22.1%). Damping reduces but does not eliminate the long-horizon extrapolation problem that afflicts every trend-following model on this cyclical series.
+1. **`ets_damped` is the new best model at 1- and 2-year horizons** (4.09% and 8.51% MAPE), beating every one of the five original benchmarks including the previously-best `holt` and `naive`/`ses`. This confirms the hypothesis behind adding it: damping fixes most of `holt`'s overshoot problem while keeping its ability to track a genuine trend — but only at the shorter horizons.
+2. **At 3- and 5-year, `naive` (and `ses`, within a near-tie of it) are best**, not `ets_damped`. At 3-year, `naive` (13.32%) and `ses` (13.36%) both edge out `ets_damped` (13.59%) — a smaller gap than at 5-year, where `naive` (22.10%) is well clear of `ets_damped` (26.16%) and `drift` (25.89%). So the crossover from "damped-trend model wins" to "flat model wins" happens between the 2- and 3-year horizons, not between 3- and 5-year as might be assumed from the 1-year result alone.
 3. **`arima` is competitive but not the best model at any horizon** after the degeneracy fix — consistently the second- or third-best trend-aware model, close behind `ets_damped` and `holt` at short-to-medium horizons, and — per §4 — prone to occasional implausible long-horizon forecasts even after the fix.
-4. **This directly answers the question posed at the end of the dependency-light phase** (`docs/national_forecast_methodology.md` §4: "these benchmarks exist to set a floor that any more complex model should be expected to beat before being adopted"): `ets_damped` clears that floor at 1/2/3-year horizons; `arima` does not clear it at any horizon tested; neither clears it at 5-year, where the simplest model (naive) remains best.
+4. **This directly answers the question posed at the end of the dependency-light phase** (`docs/national_forecast_methodology.md` §4: "these benchmarks exist to set a floor that any more complex model should be expected to beat before being adopted"): `ets_damped` clears that floor at 1- and 2-year horizons only; `arima` does not clear it at any horizon tested; at 3-year and 5-year, the simplest model (naive) remains best, undefeated by any of the six more complex models added since the dependency-light phase.
 
 ### 3.2 Regional (`outputs/regional_model_results_extended.csv`, `outputs/figures/regional_win_counts_extended.png`)
 
