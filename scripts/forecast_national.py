@@ -2,7 +2,7 @@
 """Week 2 national forecasting & rolling-origin backtesting for MHCLG Live Table 600.
 
 Loads the validated England-total series (Area code E92000001) from
-data/processed/regional_waiting_lists_long.csv, fits three dependency-light
+data/processed/regional_waiting_lists_long.csv, fits four dependency-light
 benchmark forecasting models, evaluates them with leakage-free rolling-origin
 ("walk-forward") backtesting at 1/2/3/5-year horizons, writes result CSVs to
 outputs/, and produces two comparison charts under outputs/figures/.
@@ -13,6 +13,9 @@ Models (all pure Python, no third-party forecasting libraries):
                  (Hyndman & Athanasopoulos's drift method).
   - linear_trend: ordinary-least-squares straight line fit to the training
                  window, extrapolated h years beyond the origin.
+  - ses        : simple exponential smoothing; forecast is flat at the
+                 fitted level, with alpha grid-searched (0.01-0.99) to
+                 minimise in-sample SSE on the training window only.
 
 Backtesting design (see docs/national_forecast_methodology.md for the full
 rationale):
@@ -74,16 +77,19 @@ BLUE = "#2a78d6"     # actual series / categorical slot 1
 ORANGE = "#c1720a"   # naive / categorical slot 2
 GREEN = "#3f8f5f"    # drift / categorical slot 3
 RED = "#e34948"      # linear_trend / diverging pole
+VIOLET = "#4a3aa7"   # ses / categorical slot 7
 
 MODEL_COLORS = {
     "naive": ORANGE,
     "drift": GREEN,
     "linear_trend": RED,
+    "ses": VIOLET,
 }
 MODEL_LABELS = {
     "naive": "Naive (last observation)",
     "drift": "Drift",
     "linear_trend": "Linear trend (OLS)",
+    "ses": "Simple exponential smoothing",
 }
 
 
@@ -147,10 +153,47 @@ def linear_trend_forecast(train_years, train_values, horizons):
     return {h: intercept + slope * (origin_year + h) for h in horizons}
 
 
+def ses_level(train_values, alpha):
+    """Run simple exponential smoothing over train_values; return the final level."""
+    level = train_values[0]
+    for y in train_values[1:]:
+        level = alpha * y + (1 - alpha) * level
+    return level
+
+
+def ses_in_sample_sse(train_values, alpha):
+    """One-step-ahead in-sample SSE for a given alpha (training data only)."""
+    level = train_values[0]
+    sse = 0.0
+    for y in train_values[1:]:
+        sse += (y - level) ** 2
+        level = alpha * y + (1 - alpha) * level
+    return sse
+
+
+def ses_forecast(train_years, train_values, horizons):
+    """Simple exponential smoothing; forecast is flat at the fitted level (no trend term).
+
+    alpha is chosen by grid search (0.01-0.99, step 0.01) minimising one-step-ahead
+    in-sample SSE on the training window only - no future/test data is used, so this
+    selection step does not introduce leakage.
+    """
+    best_alpha, best_sse = 0.5, float("inf")
+    for i in range(1, 100):
+        alpha = i / 100
+        sse = ses_in_sample_sse(train_values, alpha)
+        if sse < best_sse:
+            best_sse = sse
+            best_alpha = alpha
+    level = ses_level(train_values, best_alpha)
+    return {h: level for h in horizons}
+
+
 MODELS = {
     "naive": naive_forecast,
     "drift": drift_forecast,
     "linear_trend": linear_trend_forecast,
+    "ses": ses_forecast,
 }
 
 
@@ -329,15 +372,17 @@ def make_mape_by_horizon_chart(summary):
     style_axes(ax)
 
     model_names = list(MODELS)
+    n_models = len(model_names)
     x = list(range(len(HORIZONS)))
-    width = 0.25
+    width = 0.8 / n_models
+    center = (n_models - 1) / 2
 
     for i, model_name in enumerate(model_names):
         mapes = []
         for h in HORIZONS:
             match = [s for s in summary if s["model"] == model_name and s["horizon_years"] == h]
             mapes.append(match[0]["mape_pct"] if match else 0)
-        offsets = [xi + (i - 1) * width for xi in x]
+        offsets = [xi + (i - center) * width for xi in x]
         ax.bar(offsets, mapes, width=width, color=MODEL_COLORS[model_name], label=MODEL_LABELS[model_name], zorder=2)
 
     ax.set_xticks(x)
