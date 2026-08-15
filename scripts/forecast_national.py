@@ -252,8 +252,16 @@ MODELS = {
 # --- Rolling-origin backtesting ----------------------------------------------
 
 
-def run_backtest(years, values):
-    """Leakage-free rolling-origin backtest. Returns a list of detail dicts."""
+def run_backtest(years, values, models=None):
+    """Leakage-free rolling-origin backtest. Returns a list of detail dicts.
+
+    models defaults to the module-level MODELS dict (the five dependency-light
+    benchmarks); callers can pass a different {name: forecast_fn} dict - e.g.
+    scripts/forecast_statistical.py passes MODELS extended with statsmodels-based
+    models - without duplicating this function.
+    """
+    if models is None:
+        models = MODELS
     n = len(years)
     detail = []
     for origin_idx in range(MIN_TRAIN_YEARS - 1, n):
@@ -265,7 +273,7 @@ def run_backtest(years, values):
         if not valid_horizons:
             continue
 
-        for model_name, model_fn in MODELS.items():
+        for model_name, model_fn in models.items():
             forecasts = model_fn(train_years, train_values, valid_horizons)
             for h in valid_horizons:
                 target_idx = origin_idx + h
@@ -370,8 +378,28 @@ def style_axes(ax):
     ax.set_axisbelow(True)
 
 
-def make_one_step_ahead_chart(detail, years, values):
-    """Actual series with each model's 1-year-ahead rolling-origin forecast."""
+def make_one_step_ahead_chart(
+    detail,
+    years,
+    values,
+    models=None,
+    model_colors=None,
+    model_labels=None,
+    title="England: actual vs. 1-year-ahead rolling-origin forecasts, 1997-2025",
+    out_path=None,
+):
+    """Actual series with each model's 1-year-ahead rolling-origin forecast.
+
+    models/model_colors/model_labels default to the module-level MODELS/MODEL_COLORS/
+    MODEL_LABELS (the five dependency-light benchmarks); callers can pass an extended
+    set - e.g. scripts/forecast_statistical.py adds statsmodels-based models - without
+    duplicating this chart's drawing code.
+    """
+    models = models if models is not None else MODELS
+    model_colors = model_colors if model_colors is not None else MODEL_COLORS
+    model_labels = model_labels if model_labels is not None else MODEL_LABELS
+    out_path = out_path if out_path is not None else FIGURES_DIR / "backtest_one_step_ahead.png"
+
     fig, ax = plt.subplots(figsize=(10, 5.6), facecolor=SURFACE)
     style_axes(ax)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
@@ -379,29 +407,23 @@ def make_one_step_ahead_chart(detail, years, values):
     ax.plot(years, values, color=INK_PRIMARY, linewidth=2, label="Actual", zorder=3)
 
     h1_rows = [r for r in detail if r["horizon"] == 1]
-    for model_name in MODELS:
+    for model_name in models:
         model_rows = sorted((r for r in h1_rows if r["model"] == model_name), key=lambda r: r["target_year"])
         xs = [r["target_year"] for r in model_rows]
         ys = [r["forecast"] for r in model_rows]
         ax.plot(
             xs,
             ys,
-            color=MODEL_COLORS[model_name],
+            color=model_colors[model_name],
             linewidth=1.4,
             linestyle="--",
             marker="o",
             markersize=3,
-            label=MODEL_LABELS[model_name],
+            label=model_labels[model_name],
             zorder=2,
         )
 
-    ax.set_title(
-        "England: actual vs. 1-year-ahead rolling-origin forecasts, 1997-2025",
-        fontsize=13,
-        color=INK_PRIMARY,
-        loc="left",
-        pad=12,
-    )
+    ax.set_title(title, fontsize=13, color=INK_PRIMARY, loc="left", pad=12)
     ax.set_xlabel("Year", fontsize=10, color=INK_SECONDARY)
     ax.set_ylabel("Households on the register", fontsize=10, color=INK_SECONDARY)
     ax.legend(frameon=False, fontsize=9, loc="upper left")
@@ -414,16 +436,28 @@ def make_one_step_ahead_chart(detail, years, values):
     )
     fig.text(0.02, 0.005, SOURCE_CAPTION, fontsize=8, color=INK_MUTED)
     fig.tight_layout(rect=(0, 0.1, 1, 1))
-    fig.savefig(FIGURES_DIR / "backtest_one_step_ahead.png", dpi=150)
+    fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
-def make_mape_by_horizon_chart(summary):
+def make_mape_by_horizon_chart(
+    summary,
+    models=None,
+    model_colors=None,
+    model_labels=None,
+    title="England: rolling-origin backtest MAPE by forecast horizon",
+    out_path=None,
+):
     """Grouped bar chart of MAPE (%) by model, across the four horizons."""
+    models = models if models is not None else MODELS
+    model_colors = model_colors if model_colors is not None else MODEL_COLORS
+    model_labels = model_labels if model_labels is not None else MODEL_LABELS
+    out_path = out_path if out_path is not None else FIGURES_DIR / "backtest_mape_by_horizon.png"
+
     fig, ax = plt.subplots(figsize=(9, 5.2), facecolor=SURFACE)
     style_axes(ax)
 
-    model_names = list(MODELS)
+    model_names = list(models)
     n_models = len(model_names)
     x = list(range(len(HORIZONS)))
     width = 0.8 / n_models
@@ -435,24 +469,18 @@ def make_mape_by_horizon_chart(summary):
             match = [s for s in summary if s["model"] == model_name and s["horizon_years"] == h]
             mapes.append(match[0]["mape_pct"] if match else 0)
         offsets = [xi + (i - center) * width for xi in x]
-        ax.bar(offsets, mapes, width=width, color=MODEL_COLORS[model_name], label=MODEL_LABELS[model_name], zorder=2)
+        ax.bar(offsets, mapes, width=width, color=model_colors[model_name], label=model_labels[model_name], zorder=2)
 
     ax.set_xticks(x)
     ax.set_xticklabels([f"{h}-year" for h in HORIZONS])
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.0f}%"))
-    ax.set_title(
-        "England: rolling-origin backtest MAPE by forecast horizon",
-        fontsize=13,
-        color=INK_PRIMARY,
-        loc="left",
-        pad=12,
-    )
+    ax.set_title(title, fontsize=13, color=INK_PRIMARY, loc="left", pad=12)
     ax.set_xlabel("Forecast horizon", fontsize=10, color=INK_SECONDARY)
     ax.set_ylabel("Mean absolute percentage error", fontsize=10, color=INK_SECONDARY)
     ax.legend(frameon=False, fontsize=9, loc="upper left")
     fig.text(0.02, 0.005, SOURCE_CAPTION, fontsize=8, color=INK_MUTED)
     fig.tight_layout(rect=(0, 0.06, 1, 1))
-    fig.savefig(FIGURES_DIR / "backtest_mape_by_horizon.png", dpi=150)
+    fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
