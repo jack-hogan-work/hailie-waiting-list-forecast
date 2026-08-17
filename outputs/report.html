@@ -246,7 +246,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
       (and don't) tell us about 2026&ndash;2030.
     </p>
     <p class="meta">
-      Source: MHCLG Live Table 600, retrieved 7 Aug 2026 &middot; Report generated 15 August 2026
+      Source: MHCLG Live Table 600, retrieved 7 Aug 2026 &middot; Report generated 17 August 2026
     </p>
   </header>
 
@@ -425,14 +425,18 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
   <section id="forward">
     <h2>5. Illustrative 2026&ndash;2030 forecast</h2>
     <p>
-      Each dependency-light model was fit on the <strong>full</strong> 1987&ndash;2025 series and
+      Each of the seven models was fit on the <strong>full</strong> 1987&ndash;2025 series and
       extrapolated forward. This is <strong>not a validated prediction</strong> &mdash; it has not
       itself been backtested, only the methodology that produced it has. Given the backtested MAPEs
       above (roughly 4&ndash;5% at 1 year, rising to 22&ndash;34% at 5 years depending on model),
       every row below should be read as a wide-uncertainty benchmark, not a point estimate to plan
-      against.
+      against. The highlighted cell in each column is the model with the lowest backtested MAPE at
+      that horizon (Section 3) &mdash; so the forecast emphasised here is the one the evaluation
+      actually supports, not a separately-chosen model. 2029 has no highlighted cell: it sits at a
+      4-year horizon, and the backtest only evaluates 1/2/3/5-year horizons, so there is no
+      evaluation result to select from at that year.
     </p>
-    <table class="data-table"><thead><tr><th>Model</th><th>2026</th><th>2027</th><th>2028</th><th>2029</th><th>2030</th></tr></thead><tbody><tr><td class="model-name">Naive</td><td class="num">1,340,527</td><td class="num">1,340,527</td><td class="num">1,340,527</td><td class="num">1,340,527</td><td class="num">1,340,527</td></tr><tr><td class="model-name">Drift</td><td class="num">1,341,870</td><td class="num">1,343,213</td><td class="num">1,344,556</td><td class="num">1,345,899</td><td class="num">1,347,242</td></tr><tr><td class="model-name">Linear trend</td><td class="num">1,408,380</td><td class="num">1,412,904</td><td class="num">1,417,427</td><td class="num">1,421,951</td><td class="num">1,426,475</td></tr><tr><td class="model-name">SES</td><td class="num">1,340,423</td><td class="num">1,340,423</td><td class="num">1,340,423</td><td class="num">1,340,423</td><td class="num">1,340,423</td></tr><tr><td class="model-name">Holt's linear</td><td class="num">1,351,190</td><td class="num">1,361,510</td><td class="num">1,371,831</td><td class="num">1,382,151</td><td class="num">1,392,472</td></tr></tbody></table>
+    <table class="data-table"><thead><tr><th>Model</th><th>2026</th><th>2027</th><th>2028</th><th>2029</th><th>2030</th></tr></thead><tbody><tr><td class="model-name">ETS damped trend</td><td class="num best-cell">1,348,467</td><td class="num best-cell">1,354,819</td><td class="num ">1,359,901</td><td class="num ">1,363,966</td><td class="num ">1,367,218</td></tr><tr><td class="model-name">ARIMA</td><td class="num ">1,350,452</td><td class="num ">1,360,377</td><td class="num ">1,370,302</td><td class="num ">1,380,227</td><td class="num ">1,390,152</td></tr><tr><td class="model-name">Holt's linear</td><td class="num ">1,351,190</td><td class="num ">1,361,510</td><td class="num ">1,371,831</td><td class="num ">1,382,151</td><td class="num ">1,392,472</td></tr><tr><td class="model-name">Naive</td><td class="num ">1,340,527</td><td class="num ">1,340,527</td><td class="num best-cell">1,340,527</td><td class="num ">1,340,527</td><td class="num best-cell">1,340,527</td></tr><tr><td class="model-name">SES</td><td class="num ">1,340,423</td><td class="num ">1,340,423</td><td class="num ">1,340,423</td><td class="num ">1,340,423</td><td class="num ">1,340,423</td></tr><tr><td class="model-name">Drift</td><td class="num ">1,341,870</td><td class="num ">1,343,213</td><td class="num ">1,344,556</td><td class="num ">1,345,899</td><td class="num ">1,347,242</td></tr><tr><td class="model-name">Linear trend</td><td class="num ">1,408,380</td><td class="num ">1,412,904</td><td class="num ">1,417,427</td><td class="num ">1,421,951</td><td class="num ">1,426,475</td></tr></tbody></table>
   </section>
 
   <section id="limitations">
@@ -488,7 +492,7 @@ python3 scripts/build_report.py         # this report</pre>
   </section>
 
   <footer class="page-footer">
-    <p>Hailie waiting-list forecast &middot; generated 2026-08-15 &middot; source data: MHCLG Live Table 600</p>
+    <p>Hailie waiting-list forecast &middot; generated 2026-08-17 &middot; source data: MHCLG Live Table 600</p>
   </footer>
 
 </div>

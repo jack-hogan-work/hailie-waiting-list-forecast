@@ -1,0 +1,316 @@
+region_code,region_name,model,target_year,forecast
+E12000001,North East,naive,2026,63211
+E12000001,North East,naive,2027,63211
+E12000001,North East,naive,2028,63211
+E12000001,North East,naive,2029,63211
+E12000001,North East,naive,2030,63211
+E12000001,North East,drift,2026,62319.2
+E12000001,North East,drift,2027,61427.4
+E12000001,North East,drift,2028,60535.6
+E12000001,North East,drift,2029,59643.7
+E12000001,North East,drift,2030,58751.9
+E12000001,North East,linear_trend,2026,58266.9
+E12000001,North East,linear_trend,2027,57404.5
+E12000001,North East,linear_trend,2028,56542.2
+E12000001,North East,linear_trend,2029,55679.9
+E12000001,North East,linear_trend,2030,54817.6
+E12000001,North East,ses,2026,63261.5
+E12000001,North East,ses,2027,63261.5
+E12000001,North East,ses,2028,63261.5
+E12000001,North East,ses,2029,63261.5
+E12000001,North East,ses,2030,63261.5
+E12000001,North East,holt,2026,63434.1
+E12000001,North East,holt,2027,63592.7
+E12000001,North East,holt,2028,63751.3
+E12000001,North East,holt,2029,63909.9
+E12000001,North East,holt,2030,64068.5
+E12000001,North East,ets_damped,2026,62954.8
+E12000001,North East,ets_damped,2027,62479.7
+E12000001,North East,ets_damped,2028,62014.5
+E12000001,North East,ets_damped,2029,61559.0
+E12000001,North East,ets_damped,2030,61112.9
+E12000001,North East,arima,2026,62995.8
+E12000001,North East,arima,2027,62916.8
+E12000001,North East,arima,2028,62837.8
+E12000001,North East,arima,2029,62758.8
+E12000001,North East,arima,2030,62679.7
+E12000002,North West,naive,2026,209887
+E12000002,North West,naive,2027,209887
+E12000002,North West,naive,2028,209887
+E12000002,North West,naive,2029,209887
+E12000002,North West,naive,2030,209887
+E12000002,North West,drift,2026,210262.4
+E12000002,North West,drift,2027,210637.9
+E12000002,North West,drift,2028,211013.3
+E12000002,North West,drift,2029,211388.8
+E12000002,North West,drift,2030,211764.2
+E12000002,North West,linear_trend,2026,210463.2
+E12000002,North West,linear_trend,2027,211817.8
+E12000002,North West,linear_trend,2028,213172.5
+E12000002,North West,linear_trend,2029,214527.2
+E12000002,North West,linear_trend,2030,215881.9
+E12000002,North West,ses,2026,209859.5
+E12000002,North West,ses,2027,209859.5
+E12000002,North West,ses,2028,209859.5
+E12000002,North West,ses,2029,209859.5
+E12000002,North West,ses,2030,209859.5
+E12000002,North West,holt,2026,214141.4
+E12000002,North West,holt,2027,218372.3
+E12000002,North West,holt,2028,222603.1
+E12000002,North West,holt,2029,226834.0
+E12000002,North West,holt,2030,231064.8
+E12000002,North West,ets_damped,2026,212598.4
+E12000002,North West,ets_damped,2027,214749.8
+E12000002,North West,ets_damped,2028,216470.9
+E12000002,North West,ets_damped,2029,217847.8
+E12000002,North West,ets_damped,2030,218949.4
+E12000002,North West,arima,2026,213950.9
+E12000002,North West,arima,2027,218247.6
+E12000002,North West,arima,2028,222544.2
+E12000002,North West,arima,2029,226840.8
+E12000002,North West,arima,2030,231137.4
+E12000003,Yorkshire and The Humber,naive,2026,172536
+E12000003,Yorkshire and The Humber,naive,2027,172536
+E12000003,Yorkshire and The Humber,naive,2028,172536
+E12000003,Yorkshire and The Humber,naive,2029,172536
+E12000003,Yorkshire and The Humber,naive,2030,172536
+E12000003,Yorkshire and The Humber,drift,2026,172864.4
+E12000003,Yorkshire and The Humber,drift,2027,173192.7
+E12000003,Yorkshire and The Humber,drift,2028,173521.1
+E12000003,Yorkshire and The Humber,drift,2029,173849.5
+E12000003,Yorkshire and The Humber,drift,2030,174177.8
+E12000003,Yorkshire and The Humber,linear_trend,2026,185111.0
+E12000003,Yorkshire and The Humber,linear_trend,2027,184995.6
+E12000003,Yorkshire and The Humber,linear_trend,2028,184880.1
+E12000003,Yorkshire and The Humber,linear_trend,2029,184764.7
+E12000003,Yorkshire and The Humber,linear_trend,2030,184649.2
+E12000003,Yorkshire and The Humber,ses,2026,172532.1
+E12000003,Yorkshire and The Humber,ses,2027,172532.1
+E12000003,Yorkshire and The Humber,ses,2028,172532.1
+E12000003,Yorkshire and The Humber,ses,2029,172532.1
+E12000003,Yorkshire and The Humber,ses,2030,172532.1
+E12000003,Yorkshire and The Humber,holt,2026,177310.6
+E12000003,Yorkshire and The Humber,holt,2027,182019.2
+E12000003,Yorkshire and The Humber,holt,2028,186727.8
+E12000003,Yorkshire and The Humber,holt,2029,191436.4
+E12000003,Yorkshire and The Humber,holt,2030,196145.1
+E12000003,Yorkshire and The Humber,ets_damped,2026,172626.4
+E12000003,Yorkshire and The Humber,ets_damped,2027,172708.6
+E12000003,Yorkshire and The Humber,ets_damped,2028,172783.2
+E12000003,Yorkshire and The Humber,ets_damped,2029,172851.0
+E12000003,Yorkshire and The Humber,ets_damped,2030,172912.6
+E12000003,Yorkshire and The Humber,arima,2026,177916.2
+E12000003,Yorkshire and The Humber,arima,2027,183296.3
+E12000003,Yorkshire and The Humber,arima,2028,188676.5
+E12000003,Yorkshire and The Humber,arima,2029,194056.7
+E12000003,Yorkshire and The Humber,arima,2030,199436.8
+E12000004,East Midlands,naive,2026,84013
+E12000004,East Midlands,naive,2027,84013
+E12000004,East Midlands,naive,2028,84013
+E12000004,East Midlands,naive,2029,84013
+E12000004,East Midlands,naive,2030,84013
+E12000004,East Midlands,drift,2026,83317.7
+E12000004,East Midlands,drift,2027,82622.3
+E12000004,East Midlands,drift,2028,81927.0
+E12000004,East Midlands,drift,2029,81231.6
+E12000004,East Midlands,drift,2030,80536.3
+E12000004,East Midlands,linear_trend,2026,82419.0
+E12000004,East Midlands,linear_trend,2027,81216.8
+E12000004,East Midlands,linear_trend,2028,80014.6
+E12000004,East Midlands,linear_trend,2029,78812.4
+E12000004,East Midlands,linear_trend,2030,77610.2
+E12000004,East Midlands,ses,2026,84042.6
+E12000004,East Midlands,ses,2027,84042.6
+E12000004,East Midlands,ses,2028,84042.6
+E12000004,East Midlands,ses,2029,84042.6
+E12000004,East Midlands,ses,2030,84042.6
+E12000004,East Midlands,holt,2026,84275.4
+E12000004,East Midlands,holt,2027,84486.8
+E12000004,East Midlands,holt,2028,84698.2
+E12000004,East Midlands,holt,2029,84909.6
+E12000004,East Midlands,holt,2030,85121.0
+E12000004,East Midlands,ets_damped,2026,83066.5
+E12000004,East Midlands,ets_damped,2027,82124.7
+E12000004,East Midlands,ets_damped,2028,81187.6
+E12000004,East Midlands,ets_damped,2029,80255.2
+E12000004,East Midlands,ets_damped,2030,79327.5
+E12000004,East Midlands,arima,2026,81025.0
+E12000004,East Midlands,arima,2027,78037.0
+E12000004,East Midlands,arima,2028,75049.0
+E12000004,East Midlands,arima,2029,72061.0
+E12000004,East Midlands,arima,2030,69073.0
+E12000005,West Midlands,naive,2026,127179
+E12000005,West Midlands,naive,2027,127179
+E12000005,West Midlands,naive,2028,127179
+E12000005,West Midlands,naive,2029,127179
+E12000005,West Midlands,naive,2030,127179
+E12000005,West Midlands,drift,2026,127051.5
+E12000005,West Midlands,drift,2027,126924.1
+E12000005,West Midlands,drift,2028,126796.6
+E12000005,West Midlands,drift,2029,126669.1
+E12000005,West Midlands,drift,2030,126541.6
+E12000005,West Midlands,linear_trend,2026,119111.1
+E12000005,West Midlands,linear_trend,2027,118969.6
+E12000005,West Midlands,linear_trend,2028,118828.1
+E12000005,West Midlands,linear_trend,2029,118686.6
+E12000005,West Midlands,linear_trend,2030,118545.1
+E12000005,West Midlands,ses,2026,127072.4
+E12000005,West Midlands,ses,2027,127072.4
+E12000005,West Midlands,ses,2028,127072.4
+E12000005,West Midlands,ses,2029,127072.4
+E12000005,West Midlands,ses,2030,127072.4
+E12000005,West Midlands,holt,2026,126488.0
+E12000005,West Midlands,holt,2027,125910.5
+E12000005,West Midlands,holt,2028,125333.1
+E12000005,West Midlands,holt,2029,124755.6
+E12000005,West Midlands,holt,2030,124178.2
+E12000005,West Midlands,ets_damped,2026,131440.6
+E12000005,West Midlands,ets_damped,2027,134849.8
+E12000005,West Midlands,ets_damped,2028,137577.3
+E12000005,West Midlands,ets_damped,2029,139759.2
+E12000005,West Midlands,ets_damped,2030,141504.7
+E12000005,West Midlands,arima,2026,136394.5
+E12000005,West Midlands,arima,2027,145610.1
+E12000005,West Midlands,arima,2028,154825.6
+E12000005,West Midlands,arima,2029,164041.1
+E12000005,West Midlands,arima,2030,173256.7
+E12000006,East of England,naive,2026,91871
+E12000006,East of England,naive,2027,91871
+E12000006,East of England,naive,2028,91871
+E12000006,East of England,naive,2029,91871
+E12000006,East of England,naive,2030,91871
+E12000006,East of England,drift,2026,91241.8
+E12000006,East of England,drift,2027,90612.7
+E12000006,East of England,drift,2028,89983.5
+E12000006,East of England,drift,2029,89354.4
+E12000006,East of England,drift,2030,88725.2
+E12000006,East of England,linear_trend,2026,113852.4
+E12000006,East of England,linear_trend,2027,113908.5
+E12000006,East of England,linear_trend,2028,113964.7
+E12000006,East of England,linear_trend,2029,114020.9
+E12000006,East of England,linear_trend,2030,114077.0
+E12000006,East of England,ses,2026,91895.9
+E12000006,East of England,ses,2027,91895.9
+E12000006,East of England,ses,2028,91895.9
+E12000006,East of England,ses,2029,91895.9
+E12000006,East of England,ses,2030,91895.9
+E12000006,East of England,holt,2026,92410.6
+E12000006,East of England,holt,2027,92919.9
+E12000006,East of England,holt,2028,93429.1
+E12000006,East of England,holt,2029,93938.4
+E12000006,East of England,holt,2030,94447.7
+E12000006,East of England,ets_damped,2026,91390.2
+E12000006,East of England,ets_damped,2027,91005.6
+E12000006,East of England,ets_damped,2028,90698.0
+E12000006,East of England,ets_damped,2029,90451.8
+E12000006,East of England,ets_damped,2030,90254.9
+E12000006,East of England,arima,2026,90202.6
+E12000006,East of England,arima,2027,88433.7
+E12000006,East of England,arima,2028,86676.5
+E12000006,East of England,arima,2029,84918.0
+E12000006,East of England,arima,2030,83159.6
+E12000007,London,naive,2026,341009
+E12000007,London,naive,2027,341009
+E12000007,London,naive,2028,341009
+E12000007,London,naive,2029,341009
+E12000007,London,naive,2030,341009
+E12000007,London,drift,2026,343026.5
+E12000007,London,drift,2027,345044.1
+E12000007,London,drift,2028,347061.6
+E12000007,London,drift,2029,349079.1
+E12000007,London,drift,2030,351096.6
+E12000007,London,linear_trend,2026,323938.6
+E12000007,London,linear_trend,2027,326801.4
+E12000007,London,linear_trend,2028,329664.1
+E12000007,London,linear_trend,2029,332526.9
+E12000007,London,linear_trend,2030,335389.6
+E12000007,London,ses,2026,340961.2
+E12000007,London,ses,2027,340961.2
+E12000007,London,ses,2028,340961.2
+E12000007,London,ses,2029,340961.2
+E12000007,London,ses,2030,340961.2
+E12000007,London,holt,2026,351983.6
+E12000007,London,holt,2027,362538.2
+E12000007,London,holt,2028,373092.9
+E12000007,London,holt,2029,383647.6
+E12000007,London,holt,2030,394202.2
+E12000007,London,ets_damped,2026,347549.5
+E12000007,London,ets_damped,2027,352332.9
+E12000007,London,ets_damped,2028,356159.6
+E12000007,London,ets_damped,2029,359221.0
+E12000007,London,ets_damped,2030,361670.1
+E12000007,London,arima,2026,348870.4
+E12000007,London,arima,2027,358049.5
+E12000007,London,arima,2028,367228.7
+E12000007,London,arima,2029,376407.9
+E12000007,London,arima,2030,385587.0
+E12000008,South East,naive,2026,117590
+E12000008,South East,naive,2027,117590
+E12000008,South East,naive,2028,117590
+E12000008,South East,naive,2029,117590
+E12000008,South East,naive,2030,117590
+E12000008,South East,drift,2026,117340.3
+E12000008,South East,drift,2027,117090.5
+E12000008,South East,drift,2028,116840.8
+E12000008,South East,drift,2029,116591.1
+E12000008,South East,drift,2030,116341.3
+E12000008,South East,linear_trend,2026,164510.7
+E12000008,South East,linear_trend,2027,165441.7
+E12000008,South East,linear_trend,2028,166372.7
+E12000008,South East,linear_trend,2029,167303.7
+E12000008,South East,linear_trend,2030,168234.7
+E12000008,South East,ses,2026,117598.3
+E12000008,South East,ses,2027,117598.3
+E12000008,South East,ses,2028,117598.3
+E12000008,South East,ses,2029,117598.3
+E12000008,South East,ses,2030,117598.3
+E12000008,South East,holt,2026,117500.2
+E12000008,South East,holt,2027,117394.9
+E12000008,South East,holt,2028,117289.6
+E12000008,South East,holt,2029,117184.3
+E12000008,South East,holt,2030,117079.0
+E12000008,South East,ets_damped,2026,117463.5
+E12000008,South East,ets_damped,2027,117310.4
+E12000008,South East,ets_damped,2028,117187.9
+E12000008,South East,ets_damped,2029,117089.9
+E12000008,South East,ets_damped,2030,117011.5
+E12000008,South East,arima,2026,116760.0
+E12000008,South East,arima,2027,115930.0
+E12000008,South East,arima,2028,115100.0
+E12000008,South East,arima,2029,114270.0
+E12000008,South East,arima,2030,113440.0
+E12000009,South West,naive,2026,133231
+E12000009,South West,naive,2027,133231
+E12000009,South West,naive,2028,133231
+E12000009,South West,naive,2029,133231
+E12000009,South West,naive,2030,133231
+E12000009,South West,drift,2026,134446.2
+E12000009,South West,drift,2027,135661.4
+E12000009,South West,drift,2028,136876.6
+E12000009,South West,drift,2029,138091.8
+E12000009,South West,drift,2030,139307.1
+E12000009,South West,linear_trend,2026,150706.9
+E12000009,South West,linear_trend,2027,152347.5
+E12000009,South West,linear_trend,2028,153988.1
+E12000009,South West,linear_trend,2029,155628.7
+E12000009,South West,linear_trend,2030,157269.3
+E12000009,South West,ses,2026,133199.9
+E12000009,South West,ses,2027,133199.9
+E12000009,South West,ses,2028,133199.9
+E12000009,South West,ses,2029,133199.9
+E12000009,South West,ses,2030,133199.9
+E12000009,South West,holt,2026,134980.3
+E12000009,South West,holt,2027,136743.0
+E12000009,South West,holt,2028,138505.7
+E12000009,South West,holt,2029,140268.4
+E12000009,South West,holt,2030,142031.1
+E12000009,South West,ets_damped,2026,133992.6
+E12000009,South West,ets_damped,2027,134738.6
+E12000009,South West,ets_damped,2028,135469.3
+E12000009,South West,ets_damped,2029,136185.2
+E12000009,South West,ets_damped,2030,136886.4
+E12000009,South West,arima,2026,136292.9
+E12000009,South West,arima,2027,139354.8
+E12000009,South West,arima,2028,142416.7
+E12000009,South West,arima,2029,145478.6
+E12000009,South West,arima,2030,148540.5

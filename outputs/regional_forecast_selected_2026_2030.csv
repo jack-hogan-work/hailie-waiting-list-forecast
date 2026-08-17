@@ -1,0 +1,37 @@
+region_code,region_name,target_year,horizon_years,selected_model,mape_pct_at_selection,forecast
+E12000001,North East,2026,1,drift,10.45,62319.2
+E12000001,North East,2027,2,drift,15.35,61427.4
+E12000001,North East,2028,3,naive,18.78,63211
+E12000001,North East,2030,5,naive,26.33,63211
+E12000002,North West,2026,1,holt,6.71,214141.4
+E12000002,North West,2027,2,naive,10.37,209887
+E12000002,North West,2028,3,naive,14.25,209887
+E12000002,North West,2030,5,naive,19.27,209887
+E12000003,Yorkshire and The Humber,2026,1,naive,6.96,172536
+E12000003,Yorkshire and The Humber,2027,2,naive,12.43,172536
+E12000003,Yorkshire and The Humber,2028,3,naive,17.73,172536
+E12000003,Yorkshire and The Humber,2030,5,naive,27.88,172536
+E12000004,East Midlands,2026,1,naive,6.39,84013
+E12000004,East Midlands,2027,2,naive,9.66,84013
+E12000004,East Midlands,2028,3,naive,13.54,84013
+E12000004,East Midlands,2030,5,naive,21.7,84013
+E12000005,West Midlands,2026,1,naive,8.0,127179
+E12000005,West Midlands,2027,2,naive,12.94,127179
+E12000005,West Midlands,2028,3,naive,17.16,127179
+E12000005,West Midlands,2030,5,naive,27.52,127179
+E12000006,East of England,2026,1,naive,6.45,91871
+E12000006,East of England,2027,2,naive,9.68,91871
+E12000006,East of England,2028,3,naive,13.85,91871
+E12000006,East of England,2030,5,naive,21.74,91871
+E12000007,London,2026,1,naive,6.23,341009
+E12000007,London,2027,2,naive,11.15,341009
+E12000007,London,2028,3,naive,16.58,341009
+E12000007,London,2030,5,naive,26.3,341009
+E12000008,South East,2026,1,ets_damped,5.74,117463.5
+E12000008,South East,2027,2,ets_damped,9.81,117310.4
+E12000008,South East,2028,3,ets_damped,16.48,117187.9
+E12000008,South East,2030,5,ets_damped,28.71,117011.5
+E12000009,South West,2026,1,drift,6.97,134446.2
+E12000009,South West,2027,2,drift,12.49,135661.4
+E12000009,South West,2028,3,naive,18.42,133231
+E12000009,South West,2030,5,naive,27.78,133231

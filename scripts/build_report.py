@@ -192,12 +192,22 @@ def render_regional_best_model_table(rows_1y, rows_5y):
     )
 
 
-def render_forward_forecast_table(rows):
+def render_forward_forecast_table(rows, best=None):
+    """best, if given, is the {horizon_years: summary_row} dict from best_per_horizon()
+    (the same backtest-evaluation result used elsewhere in the report) - each forward
+    year is mapped to its horizon (target_year - 2025) and the cell for that year's
+    backtest-winning model is highlighted, so the forecast table's emphasis matches
+    the evaluation results rather than being selected independently. 2029 (horizon 4)
+    has no highlighted cell: HORIZONS=[1,2,3,5] in the backtest never evaluates a
+    4-year horizon, so there is no evaluation result to select from at that year."""
     by_model = {}
     years = sorted({int(r["target_year"]) for r in rows})
     for r in rows:
         by_model.setdefault(r["model"], {})[int(r["target_year"])] = float(r["forecast"])
-    model_order = ["naive", "drift", "linear_trend", "ses", "holt"]
+    model_order = ["ets_damped", "arima", "holt", "naive", "ses", "drift", "linear_trend"]
+    best = best or {}
+    origin_year = min(years) - 1
+    best_model_by_year = {y: best[y - origin_year]["model"] for y in years if (y - origin_year) in best}
     thead = "<tr><th>Model</th>" + "".join(f"<th>{y}</th>" for y in years) + "</tr>"
     body_rows = []
     for model in model_order:
@@ -205,7 +215,8 @@ def render_forward_forecast_table(rows):
             continue
         cells = [f'<td class="model-name">{MODEL_LABELS.get(model, model)}</td>']
         for y in years:
-            cells.append(f'<td class="num">{fmt(by_model[model][y])}</td>')
+            cell_class = "best-cell" if best_model_by_year.get(y) == model else ""
+            cells.append(f'<td class="num {cell_class}">{fmt(by_model[model][y])}</td>')
         body_rows.append("<tr>" + "".join(cells) + "</tr>")
     return f'<table class="data-table"><thead>{thead}</thead><tbody>{"".join(body_rows)}</tbody></table>'
 
@@ -379,12 +390,16 @@ PAGE_TEMPLATE = """<!doctype html>
   <section id="forward">
     <h2>5. Illustrative 2026&ndash;2030 forecast</h2>
     <p>
-      Each dependency-light model was fit on the <strong>full</strong> 1987&ndash;2025 series and
+      Each of the seven models was fit on the <strong>full</strong> 1987&ndash;2025 series and
       extrapolated forward. This is <strong>not a validated prediction</strong> &mdash; it has not
       itself been backtested, only the methodology that produced it has. Given the backtested MAPEs
       above (roughly 4&ndash;5% at 1 year, rising to 22&ndash;34% at 5 years depending on model),
       every row below should be read as a wide-uncertainty benchmark, not a point estimate to plan
-      against.
+      against. The highlighted cell in each column is the model with the lowest backtested MAPE at
+      that horizon (Section 3) &mdash; so the forecast emphasised here is the one the evaluation
+      actually supports, not a separately-chosen model. 2029 has no highlighted cell: it sits at a
+      4-year horizon, and the backtest only evaluates 1/2/3/5-year horizons, so there is no
+      evaluation result to select from at that year.
     </p>
     {forward_forecast_table}
   </section>
@@ -690,7 +705,7 @@ def main():
 
     national_extended = load_csv_rows(OUTPUTS_DIR / "model_results_extended.csv")
     regional_extended = load_csv_rows(OUTPUTS_DIR / "regional_model_results_extended.csv")
-    forward_rows = load_csv_rows(OUTPUTS_DIR / "national_forecast_2026_2030.csv")
+    forward_rows = load_csv_rows(OUTPUTS_DIR / "national_forecast_2026_2030_extended.csv")
 
     best = best_per_horizon(national_extended)
     best_1y, best_5y = best[1], best[5]
@@ -731,7 +746,7 @@ def main():
         ),
         img_regional_heatmap=img("regional_backtest_mape_heatmap.png"),
         img_regional_wins=img("regional_win_counts_extended.png"),
-        forward_forecast_table=render_forward_forecast_table(forward_rows),
+        forward_forecast_table=render_forward_forecast_table(forward_rows, best=best),
     )
 
     out_path = OUTPUTS_DIR / "report.html"

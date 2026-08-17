@@ -13,7 +13,7 @@ Analysis and forecasting of households on local authorities' housing waiting lis
 | Exploratory analysis | `scripts/explore_national.py` | `outputs/figures/england_*.png`, `regional_waiting_list_trends.png` |
 | National forecasting | `scripts/forecast_national.py` | `outputs/model_results.csv`, `outputs/backtest_predictions.csv` (naive, drift, linear-trend, SES, Holt) |
 | Regional forecasting | `scripts/forecast_regional.py` | `outputs/regional_model_results.csv` (same 5 models, per region) |
-| Statistical models | `scripts/forecast_statistical.py` | `outputs/model_results_extended.csv`, `outputs/regional_model_results_extended.csv` (+ ARIMA, damped-trend ETS) |
+| Statistical models | `scripts/forecast_statistical.py` | `outputs/model_results_extended.csv`, `outputs/regional_model_results_extended.csv`, `outputs/national_forecast_2026_2030_extended.csv`, `outputs/regional_forecast_2026_2030_extended.csv`, `outputs/regional_forecast_selected_2026_2030.csv`, `outputs/regional_forecast_change_2025_2030.csv` (+ ARIMA, damped-trend ETS) |
 | Report | `scripts/build_report.py` | **`outputs/report.html`** — the consolidated deliverable |
 
 Findings, methodology, and honest limitations for each stage are written up in `docs/`:
