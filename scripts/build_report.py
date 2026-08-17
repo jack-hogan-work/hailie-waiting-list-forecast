@@ -63,6 +63,8 @@ IMAGES = [
     ("backtest_mape_by_horizon_extended.png", "Backtest MAPE by horizon, all 7 models"),
     ("regional_backtest_mape_heatmap.png", "Regional backtest MAPE by model, 1-year vs. 5-year horizon"),
     ("regional_win_counts_extended.png", "Regions where each model has the lowest MAPE, by horizon"),
+    ("regional_forecast_change_2025_2030.png", "Regional 2025-2030 change: backtest-selected model vs. range across 6 competitive models"),
+    ("regional_forecast_trajectories_2026_2030.png", "Regional trajectories: actual 2015-2025 plus 2026-2030 forecast (backtest-selected model)"),
 ]
 
 
@@ -258,8 +260,9 @@ PAGE_TEMPLATE = """<!doctype html>
       <li><a href="#results">3. Backtest results</a></li>
       <li><a href="#regional-results">4. Regional results</a></li>
       <li><a href="#forward">5. Illustrative 2026&ndash;2030 forecast</a></li>
-      <li><a href="#limitations">6. Limitations</a></li>
-      <li><a href="#reproduce">7. Reproducing this work</a></li>
+      <li><a href="#regional-forward">6. Regional 2026&ndash;2030 forecast</a></li>
+      <li><a href="#limitations">7. Limitations</a></li>
+      <li><a href="#reproduce">8. Reproducing this work</a></li>
     </ol>
   </nav>
 
@@ -404,8 +407,58 @@ PAGE_TEMPLATE = """<!doctype html>
     {forward_forecast_table}
   </section>
 
+  <section id="regional-forward">
+    <h2>6. Regional 2026&ndash;2030 forecast</h2>
+    <p>
+      The same seven-model comparison and forward-forecast approach (Section 5) was repeated
+      independently for each region, fit on that region's own 1987&ndash;2025 series. Two views
+      are shown together because neither alone tells the full story: the <strong>selected</strong>
+      point forecast (the model with the lowest backtested MAPE for that region at the 5-year
+      horizon) and the <strong>range</strong> across the other competitive models (linear trend
+      excluded &mdash; it is the weakest model everywhere, see Section 3), which shows how much
+      models disagree even where the backtest doesn't clearly prefer a trend-aware alternative to
+      a flat one.
+    </p>
+    <p>
+      <strong>The selected 5-year forecast is flat for 8 of the 9 regions.</strong> Naive (last
+      observed value, held constant) wins the backtest almost everywhere at this horizon,
+      consistent with the national and regional backtest findings above. Read literally, this
+      says &ldquo;expect little change by 2030&rdquo; in most regions. That is an honest summary
+      of what the backtest supports &mdash; but on its own it understates how much the underlying
+      models actually disagree in some places, which the range below makes visible.
+    </p>
+    {img_regional_change}
+    <p>
+      <strong>A consistent growth signal, not (yet) backed by the winning model:</strong> in
+      London, the North West, Yorkshire and The Humber, and the South West, every non-naive/SES
+      model in the comparison points to growth by 2030 (roughly +10% to +16% at the high end)
+      even though naive's flat call still wins the historical backtest in each of them. This is
+      worth flagging to Hailie as a plausible upside case in these four regions, not a confirmed
+      forecast &mdash; the backtest has not shown any trend-aware model to be more accurate than
+      flat here, only that the trend-aware models agree with each other on direction.
+    </p>
+    <p>
+      <strong>West Midlands and East Midlands are the two highest-uncertainty regions.</strong>
+      Both select naive at the 5-year horizon, but the other models disagree sharply with each
+      other as well as with naive: West Midlands ranges from &minus;2.4% to +36.2%, and East
+      Midlands from &minus;17.8% to +1.3%. Neither range should be read as a forecast &mdash; it
+      is a signal that no model has been shown reliable enough in these two regions to trust a
+      single number in either direction, and any planning conversation involving them should
+      treat the outlook as genuinely open.
+    </p>
+    {img_regional_trajectories}
+    <p class="note">
+      <strong>Caveat:</strong> like Section 5, none of this is a validated prediction. It is an
+      extrapolation from a model comparison that has itself been backtested, not a backtest of
+      these specific 2026&ndash;2030 numbers. Full region-by-region detail:
+      <code>outputs/regional_forecast_selected_2026_2030.csv</code> and
+      <code>outputs/regional_forecast_change_2025_2030.csv</code>; methodology and results:
+      <code>docs/statistical_models_methodology.md</code> &sect;5.
+    </p>
+  </section>
+
   <section id="limitations">
-    <h2>6. Limitations</h2>
+    <h2>7. Limitations</h2>
     <ul class="limitations-list">
       <li><strong>Not a complete measure of housing need.</strong> Live Table 600 counts households
         on local authorities' own housing registers only; it excludes housing-association-run
@@ -431,12 +484,12 @@ PAGE_TEMPLATE = """<!doctype html>
       <li><strong>ARIMA's automatic order search can still produce implausible long-horizon
         forecasts</strong> even after the unit-root fix above &mdash; including one negative
         forecast at a training window ending near a sharp trend change. These were reported, not
-        clipped or hidden; see <code>docs/statistical_models_methodology.md</code> &sect;4.</li>
+        clipped or hidden; see <code>docs/statistical_models_methodology.md</code> &sect;6.</li>
     </ul>
   </section>
 
   <section id="reproduce">
-    <h2>7. Reproducing this work</h2>
+    <h2>8. Reproducing this work</h2>
     <p>
       Every number and chart in this report is generated by a script, in order, from the raw
       MHCLG source file. Nothing is hand-edited or estimated by eye.
@@ -747,6 +800,8 @@ def main():
         img_regional_heatmap=img("regional_backtest_mape_heatmap.png"),
         img_regional_wins=img("regional_win_counts_extended.png"),
         forward_forecast_table=render_forward_forecast_table(forward_rows, best=best),
+        img_regional_change=img("regional_forecast_change_2025_2030.png"),
+        img_regional_trajectories=img("regional_forecast_trajectories_2026_2030.png"),
     )
 
     out_path = OUTPUTS_DIR / "report.html"
