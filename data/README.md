@@ -6,6 +6,8 @@
 - **Publisher:** Ministry of Housing, Communities & Local Government (MHCLG).
 - **Source page:** [Live tables on rents, lettings and tenancies](https://www.gov.uk/government/statistical-data-sets/live-tables-on-rents-lettings-and-tenancies) (GOV.UK statistical data set collection).
 - **Retrieved:** 7 August 2026.
+- **Workbook update shown on cover sheet:** 25 June 2026.
+- **Collection route:** Housing Investment Programme returns (1987–2000), Housing Strategy Statistical Appendix (2001–2011), and Local Authority Housing Statistics (2012–2025).
 
 ## Files
 
@@ -39,7 +41,7 @@ python3 scripts/prepare_data.py
 | `Notes` | Free-text note reference from the source worksheet, where present. |
 | `Region` | Region or country name. Includes an `England` total row alongside the nine English regions — do not double-count it when summing regions. |
 | `year` | Calendar year, 1987–2025. |
-| `households_on_register` | Households on the housing register at 1 April of that year. Blank = missing/not available for that year. |
+| `households_on_register` | Households on the housing register on the source reference date. This was 1 April through 2017–18 and 31 March thereafter. Blank = not available/not applicable. |
 
 **Local authority long file** (`local_authority_waiting_lists_long.csv`):
 
@@ -53,7 +55,7 @@ python3 scripts/prepare_data.py
 | `Country` | Country (England for all rows in this extract). |
 | `Notes` | Free-text note reference from the source worksheet, where present. |
 | `year` | Calendar year, 1987–2025. |
-| `households_on_register` | Households on the housing register at 1 April of that year. Blank = missing/not available for that year. |
+| `households_on_register` | Households on the housing register on the source reference date. This was 1 April through 2017–18 and 31 March thereafter. Blank = not available/not applicable. |
 
 ## Transformations (`scripts/prepare_data.py`)
 
@@ -66,9 +68,12 @@ python3 scripts/prepare_data.py
 4. Each dataset is reshaped from wide (one column per year) to long (one row per authority/region per year) format.
 5. Basic QA is run and printed to stdout on every run (see `docs/initial_feasibility_note.md` for the results from the 7 August 2026 run): row counts, year coverage, missing-value counts, count of genuine zero values, and a duplicate identifier/year check.
 
+The processing code does **not** impute values. However, the published workbook has an `Imputations` worksheet containing 45 source-level replacements used by MHCLG in the figures it publishes. Those replacements are therefore already embedded in the regional and local-authority data before this repository reads them. `scripts/audit_table_600.py` records this distinction and verifies the ODS, CSV extracts and processed files against one another.
+
 ## Limitations
 
 - **Boundary changes.** Local authority boundaries have changed repeatedly since 1987 (mergers into unitary authorities, most recently in 2019–2023). The extract's `Local authority code` reflects the authority as it was recorded in that source row, while `LAD24CD`/`LAD24NM` map it to the current (2024) authority. Several old codes can map to the same current authority, so summing `households_on_register` by `LAD24CD` across years mixes data collected under different boundaries. See `docs/initial_feasibility_note.md` for detail and counts.
-- **Missing/suppressed values.** `[z]` and `[x]` marker codes from MHCLG (not available / not applicable) are treated as missing in the processed data; no imputation has been performed.
-- **Not the same as unmet housing need.** This table counts households on local authorities' housing registers (waiting lists), not all households in housing need. Registers are periodically reviewed and applicants removed, so figures can fall for administrative reasons (a register "cleanse") as well as genuine reductions in demand. This is a narrower and differently-defined measure than housing-association or combined-register waiting list figures reported elsewhere — see `docs/initial_feasibility_note.md`.
+- **Missing markers and source imputations.** `[x]` means not available and `[z]` means not applicable. Both become blank in the processed files. The repository adds no imputations, but the publisher has already made 45 documented replacements in the published workbook; these must not be described as raw reported values without qualification.
+- **Comparability over time.** Figures for 1987–2004 are more prone to error because validation was less rigorous. Choice-based lettings from 2003 and post-Localism Act qualification rules can create policy-driven level changes. The source also flags a definition change for Epping Forest from 2022–23 onward and a special register arrangement for Telford and Wrekin.
+- **Not the same as unmet housing need.** This table counts households on local authorities' housing registers, not all households waiting for social housing. It can include households not assessed as being in housing need; it generally excludes existing council tenants seeking a transfer; applicants can appear on more than one authority's register; and register reviews can produce administrative falls. See `docs/initial_feasibility_note.md`.
 - **England total row.** The regional extract includes an `England` total row (`Area code` = `E92000001`) alongside the nine English regions.

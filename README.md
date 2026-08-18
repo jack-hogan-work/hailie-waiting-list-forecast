@@ -2,12 +2,15 @@
 
 Analysis and forecasting of households on local authorities' housing waiting lists in England (MHCLG Live Table 600, 1987–2025).
 
-**Start here:** `outputs/report.html` — a self-contained report consolidating the national trend, the regional breakdown, and a leakage-free rolling-origin backtest of seven forecasting models. Open it in any browser; no server or dependencies required.
+> **Current phase: data-quality and methodology validation.** The forecasts in this repository are exploratory outputs, not validated estimates for operational or planning use. The immediate priority is to prove the Table 600 source-to-output chain, understand publisher imputations and missing values, reconcile changing local-authority geography, and complete external consistency checks before any forecast is treated as a result.
+
+**Start here:** `docs/data_quality_audit.md` for the current evidence and open decisions, then `docs/project_plan_plain_english.md` for the route through the project. `outputs/report.html` preserves the exploratory forecasting work completed so far, but it should be read as provisional.
 
 ## What's in this repository
 
 | Stage | Script | Output |
 | --- | --- | --- |
+| Source audit | `scripts/audit_table_600.py` | Console: original ODS → CSV extract → processed-data checks, source marker/imputation counts, and regional-total reconciliation |
 | Data intake | `scripts/prepare_data.py` | `data/processed/*.csv` — raw MHCLG extracts reshaped to long format |
 | Validation | `scripts/validate_national.py` | Console: England-total figures checked against the raw extract |
 | Exploratory analysis | `scripts/explore_national.py` | `outputs/figures/england_*.png`, `regional_waiting_list_trends.png` |
@@ -19,6 +22,8 @@ Analysis and forecasting of households on local authorities' housing waiting lis
 Findings, methodology, and honest limitations for each stage are written up in `docs/`:
 
 - `data/README.md` — source, columns, and transformations for the processed data
+- `docs/data_quality_audit.md` — current validation status, evidence, Jose's four questions, and the gate before modelling resumes
+- `docs/project_plan_plain_english.md` — the whole project plan without modelling jargon
 - `docs/initial_feasibility_note.md` — Week 1 QA findings, boundary-change and suppression-code handling
 - `docs/national_validation.md` — England-total figures checked against the raw extract
 - `docs/initial_eda_findings.md` — descriptive read of the national and regional series
@@ -38,6 +43,7 @@ python3 -m venv .venv
 Then, in order:
 
 ```
+python3 scripts/audit_table_600.py
 python3 scripts/prepare_data.py
 python3 scripts/validate_national.py
 .venv/bin/python3 scripts/explore_national.py
@@ -47,11 +53,11 @@ python3 scripts/validate_national.py
 python3 scripts/build_report.py
 ```
 
-Every script re-derives its own QA checks and prints them to stdout; every output file is reproducible from the raw data in `data/raw/` and `data/extracts/`, which are never modified by any script.
+Every script re-derives its own QA checks and prints them to stdout; every output file is reproducible from the raw data in `data/raw/` and `data/extracts/`, which are never modified by any script. Run the source audit before rebuilding or interpreting downstream outputs.
 
-## Headline result
+## Exploratory forecasting result
 
-No single forecasting model wins at every horizon. A damped-trend exponential smoother is most accurate 1–2 years out; the simplest possible model — carrying the last observed value forward — is hardest to beat from 3 years out, because England's waiting-list total is cyclical rather than trending, and every trend-aware model eventually overshoots when the cycle turns. See `outputs/report.html` for the full picture.
+In the existing backtest, no single forecasting model wins at every horizon. A damped-trend exponential smoother is most accurate 1–2 years out, while carrying the last observed value forward is hardest to beat from 3 years out. This is a useful feasibility finding, not a validated forecast: the analysis predates completion of the source, geography, comparability and external-consistency audit. See `outputs/report.html` for the exploratory work completed so far.
 
 ## Data source
 
