@@ -62,8 +62,8 @@ def find_header_row(rows):
 def parse_numeric(raw):
     """Convert a raw cell to an int, or None if missing.
 
-    Blank cells and bracketed marker codes (e.g. "[z]" = not available,
-    "[x]" = not applicable) are treated as missing. Genuine zeroes are
+    Blank cells and bracketed marker codes ("[x]" = not available,
+    "[z]" = not applicable) are treated as missing. Genuine zeroes are
     preserved. Thousands separators are stripped before conversion.
     """
     value = raw.strip()

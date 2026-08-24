@@ -336,10 +336,18 @@ def summarize(detail):
 # --- Forward forecast (illustrative, fit on the full series) ----------------
 
 
-def forward_forecast(years, values):
-    """Forecast 2026-2030 with each model fit on the full 1987-2025 series."""
+def forward_forecast(years, values, models=None):
+    """Forecast 2026-2030 with each model fit on the full 1987-2025 series.
+
+    models defaults to the module-level MODELS dict (the five dependency-light
+    benchmarks); callers can pass a different {name: forecast_fn} dict - e.g.
+    scripts/forecast_statistical.py passes EXTENDED_MODELS - without duplicating
+    this function, matching the run_backtest()/chart-function pattern above.
+    """
+    if models is None:
+        models = MODELS
     rows = []
-    for model_name, model_fn in MODELS.items():
+    for model_name, model_fn in models.items():
         forecasts = model_fn(years, values, [y - years[-1] for y in FORWARD_YEARS])
         for target_year, h in zip(FORWARD_YEARS, [y - years[-1] for y in FORWARD_YEARS]):
             rows.append(

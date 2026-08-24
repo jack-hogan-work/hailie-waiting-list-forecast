@@ -24,7 +24,7 @@ Missing-cell counts by year rise in two clear steps that line up with England's 
 - **2010–2019:** ~50 missing cells per year, stepping up after the 2009 unitary reorganisation (e.g. Cornwall, County Durham, Northumberland, Shropshire, Wiltshire, Cheshire East/West, Bedford, Central Bedfordshire).
 - **2020–2025:** rising from 59 to 82 missing cells per year, reflecting the 2019–2023 wave (Buckinghamshire; Bournemouth, Christchurch and Poole; Dorset; East/West Suffolk; the Northamptonshire split; the Cumbria split into Cumberland and Westmorland and Furness; Somerset).
 
-No imputation has been applied anywhere in the pipeline — all missing cells are left blank in the processed CSVs, to be handled explicitly (and separately) by any downstream modelling step.
+No imputation is added by the repository pipeline — all final `[x]`/`[z]` cells are left blank in the processed CSVs. The published workbook itself does contain an `Imputations` worksheet with 45 source-level replacements, so published values are not all untouched council returns. See §4 and `docs/data_quality_audit.md`.
 
 ## 2. Boundary changes
 
@@ -42,7 +42,7 @@ This means a naive `GROUP BY LAD24CD` sum over the processed long file will sile
 Two suppression marker codes appear in the source workbook:
 
 - `[z]` (1,421 occurrences) — not applicable, almost entirely because the authority did not exist under that code in that year (see §2).
-- `[x]` (2 occurrences) — not available, on a Canterbury (2023) and a Telford and Wrekin (2019) cell.
+- `[x]` (2 occurrences) — not available. The two final markers are on Canterbury and Telford and Wrekin in the worksheet's `2024` column.
 
 Separately, the West Midlands region row and the Telford and Wrekin authority row each carry a `[note 5]` reference in the source's `Notes` column. This is a footnote pointer, not a value-suppression marker, and its meaning is not resolved by this extract — the source workbook's Notes worksheet (not pulled into `data/extracts`) should be consulted if that annotation matters to downstream analysis. `parse_numeric()` only strips numeric year-column markers; the `Notes` column text is passed through unchanged as an identifier field.
 
@@ -50,7 +50,11 @@ Both are converted to a missing (blank) value in the processed output by `parse_
 
 ## 4. Imputation
 
-No imputation has been performed in Week 1. The processed files carry the source's missing values through unchanged as blank cells. Any future imputation (e.g. for reorganised authorities where a continuous current-boundary series is needed) should be a distinct, documented step downstream of this intake pipeline, not folded into it — the intake output is meant to be a faithful, traceable copy of the source, not a modelling-ready series.
+No imputation is performed by `scripts/prepare_data.py`. The processed files carry the published table's final marker values through as blanks.
+
+There is nevertheless imputation in the source. The original ODS contains 45 documented publisher replacements in its `Imputations` worksheet, covering years reported there as 2004–2025. Eleven original entries are `[x]`, eight are zero, and the remainder are numeric values that MHCLG replaced. The published Regional and Local Authority worksheets already contain the replacement values, so these are source-level imputations rather than transformations introduced by this repository.
+
+Any additional project imputation (for example, while building a continuous current-boundary series) should be a separate, explicit and sensitivity-tested step. It must not be folded into the intake pipeline.
 
 ## 5. Local authority registers vs. broader social-housing waiting lists
 

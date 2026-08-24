@@ -63,6 +63,8 @@ IMAGES = [
     ("backtest_mape_by_horizon_extended.png", "Backtest MAPE by horizon, all 7 models"),
     ("regional_backtest_mape_heatmap.png", "Regional backtest MAPE by model, 1-year vs. 5-year horizon"),
     ("regional_win_counts_extended.png", "Regions where each model has the lowest MAPE, by horizon"),
+    ("regional_forecast_change_2025_2030.png", "Regional 2025-2030 change: backtest-selected model vs. range across 6 competitive models"),
+    ("regional_forecast_trajectories_2026_2030.png", "Regional trajectories: actual 2015-2025 plus 2026-2030 forecast (backtest-selected model)"),
 ]
 
 
@@ -192,12 +194,22 @@ def render_regional_best_model_table(rows_1y, rows_5y):
     )
 
 
-def render_forward_forecast_table(rows):
+def render_forward_forecast_table(rows, best=None):
+    """best, if given, is the {horizon_years: summary_row} dict from best_per_horizon()
+    (the same backtest-evaluation result used elsewhere in the report) - each forward
+    year is mapped to its horizon (target_year - 2025) and the cell for that year's
+    backtest-winning model is highlighted, so the forecast table's emphasis matches
+    the evaluation results rather than being selected independently. 2029 (horizon 4)
+    has no highlighted cell: HORIZONS=[1,2,3,5] in the backtest never evaluates a
+    4-year horizon, so there is no evaluation result to select from at that year."""
     by_model = {}
     years = sorted({int(r["target_year"]) for r in rows})
     for r in rows:
         by_model.setdefault(r["model"], {})[int(r["target_year"])] = float(r["forecast"])
-    model_order = ["naive", "drift", "linear_trend", "ses", "holt"]
+    model_order = ["ets_damped", "arima", "holt", "naive", "ses", "drift", "linear_trend"]
+    best = best or {}
+    origin_year = min(years) - 1
+    best_model_by_year = {y: best[y - origin_year]["model"] for y in years if (y - origin_year) in best}
     thead = "<tr><th>Model</th>" + "".join(f"<th>{y}</th>" for y in years) + "</tr>"
     body_rows = []
     for model in model_order:
@@ -205,7 +217,8 @@ def render_forward_forecast_table(rows):
             continue
         cells = [f'<td class="model-name">{MODEL_LABELS.get(model, model)}</td>']
         for y in years:
-            cells.append(f'<td class="num">{fmt(by_model[model][y])}</td>')
+            cell_class = "best-cell" if best_model_by_year.get(y) == model else ""
+            cells.append(f'<td class="num {cell_class}">{fmt(by_model[model][y])}</td>')
         body_rows.append("<tr>" + "".join(cells) + "</tr>")
     return f'<table class="data-table"><thead>{thead}</thead><tbody>{"".join(body_rows)}</tbody></table>'
 
@@ -247,8 +260,9 @@ PAGE_TEMPLATE = """<!doctype html>
       <li><a href="#results">3. Backtest results</a></li>
       <li><a href="#regional-results">4. Regional results</a></li>
       <li><a href="#forward">5. Illustrative 2026&ndash;2030 forecast</a></li>
-      <li><a href="#limitations">6. Limitations</a></li>
-      <li><a href="#reproduce">7. Reproducing this work</a></li>
+      <li><a href="#regional-forward">6. Regional 2026&ndash;2030 forecast</a></li>
+      <li><a href="#limitations">7. Limitations</a></li>
+      <li><a href="#reproduce">8. Reproducing this work</a></li>
     </ol>
   </nav>
 
@@ -379,18 +393,72 @@ PAGE_TEMPLATE = """<!doctype html>
   <section id="forward">
     <h2>5. Illustrative 2026&ndash;2030 forecast</h2>
     <p>
-      Each dependency-light model was fit on the <strong>full</strong> 1987&ndash;2025 series and
+      Each of the seven models was fit on the <strong>full</strong> 1987&ndash;2025 series and
       extrapolated forward. This is <strong>not a validated prediction</strong> &mdash; it has not
       itself been backtested, only the methodology that produced it has. Given the backtested MAPEs
       above (roughly 4&ndash;5% at 1 year, rising to 22&ndash;34% at 5 years depending on model),
       every row below should be read as a wide-uncertainty benchmark, not a point estimate to plan
-      against.
+      against. The highlighted cell in each column is the model with the lowest backtested MAPE at
+      that horizon (Section 3) &mdash; so the forecast emphasised here is the one the evaluation
+      actually supports, not a separately-chosen model. 2029 has no highlighted cell: it sits at a
+      4-year horizon, and the backtest only evaluates 1/2/3/5-year horizons, so there is no
+      evaluation result to select from at that year.
     </p>
     {forward_forecast_table}
   </section>
 
+  <section id="regional-forward">
+    <h2>6. Regional 2026&ndash;2030 forecast</h2>
+    <p>
+      The same seven-model comparison and forward-forecast approach (Section 5) was repeated
+      independently for each region, fit on that region's own 1987&ndash;2025 series. Two views
+      are shown together because neither alone tells the full story: the <strong>selected</strong>
+      point forecast (the model with the lowest backtested MAPE for that region at the 5-year
+      horizon) and the <strong>range</strong> across the other competitive models (linear trend
+      excluded &mdash; it is the weakest model everywhere, see Section 3), which shows how much
+      models disagree even where the backtest doesn't clearly prefer a trend-aware alternative to
+      a flat one.
+    </p>
+    <p>
+      <strong>The selected 5-year forecast is flat for 8 of the 9 regions.</strong> Naive (last
+      observed value, held constant) wins the backtest almost everywhere at this horizon,
+      consistent with the national and regional backtest findings above. Read literally, this
+      says &ldquo;expect little change by 2030&rdquo; in most regions. That is an honest summary
+      of what the backtest supports &mdash; but on its own it understates how much the underlying
+      models actually disagree in some places, which the range below makes visible.
+    </p>
+    {img_regional_change}
+    <p>
+      <strong>A consistent growth signal, not (yet) backed by the winning model:</strong> in
+      London, the North West, Yorkshire and The Humber, and the South West, every non-naive/SES
+      model in the comparison points to growth by 2030 (roughly +10% to +16% at the high end)
+      even though naive's flat call still wins the historical backtest in each of them. This is
+      worth flagging to Hailie as a plausible upside case in these four regions, not a confirmed
+      forecast &mdash; the backtest has not shown any trend-aware model to be more accurate than
+      flat here, only that the trend-aware models agree with each other on direction.
+    </p>
+    <p>
+      <strong>West Midlands and East Midlands are the two highest-uncertainty regions.</strong>
+      Both select naive at the 5-year horizon, but the other models disagree sharply with each
+      other as well as with naive: West Midlands ranges from &minus;2.4% to +36.2%, and East
+      Midlands from &minus;17.8% to +1.3%. Neither range should be read as a forecast &mdash; it
+      is a signal that no model has been shown reliable enough in these two regions to trust a
+      single number in either direction, and any planning conversation involving them should
+      treat the outlook as genuinely open.
+    </p>
+    {img_regional_trajectories}
+    <p class="note">
+      <strong>Caveat:</strong> like Section 5, none of this is a validated prediction. It is an
+      extrapolation from a model comparison that has itself been backtested, not a backtest of
+      these specific 2026&ndash;2030 numbers. Full region-by-region detail:
+      <code>outputs/regional_forecast_selected_2026_2030.csv</code> and
+      <code>outputs/regional_forecast_change_2025_2030.csv</code>; methodology and results:
+      <code>docs/statistical_models_methodology.md</code> &sect;5.
+    </p>
+  </section>
+
   <section id="limitations">
-    <h2>6. Limitations</h2>
+    <h2>7. Limitations</h2>
     <ul class="limitations-list">
       <li><strong>Not a complete measure of housing need.</strong> Live Table 600 counts households
         on local authorities' own housing registers only; it excludes housing-association-run
@@ -416,12 +484,12 @@ PAGE_TEMPLATE = """<!doctype html>
       <li><strong>ARIMA's automatic order search can still produce implausible long-horizon
         forecasts</strong> even after the unit-root fix above &mdash; including one negative
         forecast at a training window ending near a sharp trend change. These were reported, not
-        clipped or hidden; see <code>docs/statistical_models_methodology.md</code> &sect;4.</li>
+        clipped or hidden; see <code>docs/statistical_models_methodology.md</code> &sect;6.</li>
     </ul>
   </section>
 
   <section id="reproduce">
-    <h2>7. Reproducing this work</h2>
+    <h2>8. Reproducing this work</h2>
     <p>
       Every number and chart in this report is generated by a script, in order, from the raw
       MHCLG source file. Nothing is hand-edited or estimated by eye.
@@ -690,7 +758,7 @@ def main():
 
     national_extended = load_csv_rows(OUTPUTS_DIR / "model_results_extended.csv")
     regional_extended = load_csv_rows(OUTPUTS_DIR / "regional_model_results_extended.csv")
-    forward_rows = load_csv_rows(OUTPUTS_DIR / "national_forecast_2026_2030.csv")
+    forward_rows = load_csv_rows(OUTPUTS_DIR / "national_forecast_2026_2030_extended.csv")
 
     best = best_per_horizon(national_extended)
     best_1y, best_5y = best[1], best[5]
@@ -731,7 +799,9 @@ def main():
         ),
         img_regional_heatmap=img("regional_backtest_mape_heatmap.png"),
         img_regional_wins=img("regional_win_counts_extended.png"),
-        forward_forecast_table=render_forward_forecast_table(forward_rows),
+        forward_forecast_table=render_forward_forecast_table(forward_rows, best=best),
+        img_regional_change=img("regional_forecast_change_2025_2030.png"),
+        img_regional_trajectories=img("regional_forecast_trajectories_2026_2030.png"),
     )
 
     out_path = OUTPUTS_DIR / "report.html"
