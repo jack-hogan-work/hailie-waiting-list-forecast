@@ -23,6 +23,8 @@ Findings, methodology, and honest limitations for each stage are written up in `
 
 - `data/README.md` — source, columns, and transformations for the processed data
 - `docs/data_quality_audit.md` — current validation status, evidence, Jose's four questions, and the gate before modelling resumes
+- `docs/missing_data_and_imputation.md` - MHCLG missing-data and imputation methodology, Table 600 source imputations, national reconciliation, and implications for forecast uncertainty
+
 - `docs/project_plan_plain_english.md` — the whole project plan without modelling jargon
 - `docs/initial_feasibility_note.md` — Week 1 QA findings, boundary-change and suppression-code handling
 - `docs/national_validation.md` — England-total figures checked against the raw extract

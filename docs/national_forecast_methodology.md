@@ -36,7 +36,8 @@ Five dependency-light benchmarks, all pure Python (no forecasting libraries):
 - **`MIN_TRAIN_YEARS = 10`.** The first origin is 1996 (trained on 1987-1996). Fewer than 10 points was judged too few for a stable OLS trend fit; a much higher minimum would leave few origins left to backtest over, given the series is only 39 years long.
 - **Horizons: 1, 2, 3 and 5 years.** This covers both a standard one-year-ahead check and multi-year forecasts, as requested. Horizons stop at 5 years because the number of origins with a known outcome shrinks as the horizon grows (see `n_origins` in the results table) — going further would leave too few origins for a stable error estimate.
 - **No leakage.** At every origin, the model is fit only on data up to and including that origin year; the actual value compared against is always strictly later. This is enforced structurally by `run_backtest()` in the script, and checked by an assertion in `run_qa()` that the number of backtest rows produced matches the number expected from the origin/horizon grid.
-- **Origins per horizon:** 1-year = 29 origins (1996-2024), 2-year = 28 (1996-2023), 3-year = 27 (1996-2022), 5-year = 25 (1996-2020).
+- **Origins per horizon:** 1-year = 29 origins (1996-2024), 2-year = 28 (1996-2023), 3-year = 27 (1996-2022), 5-year = 25 (1996-2020). 
+For clarity, this project does not use one fixed in-sample/out-of-sample split. Instead, out-of-sample performance is evaluated repeatedly using an expanding-window rolling-origin design. At each forecast origin, the in-sample dataset consists of all observations from 1987 up to that origin year, and the forecast is evaluated only against later observations that were not used to fit that model. This provides multiple genuinely out-of-sample tests rather than relying on the result of a single train/test split.
 
 ### 1.3 Metrics
 
@@ -45,7 +46,18 @@ For each model x horizon combination, aggregated across all valid origins:
 - **MAE** (mean absolute error, households) — the primary, unit-preserving error measure.
 - **RMSE** (root mean squared error, households) — penalises large misses more than MAE; the gap between MAE and RMSE flags how much error is concentrated in a few bad forecasts (notably around the 2012-2014 turning point).
 - **MAPE** (mean absolute percentage error, %) — the "understandable" percentage metric requested; safe to use here since the England total never approaches zero (range ~1.02m-1.85m over the series).
-- **Mean error (bias)** — signed mean of (forecast - actual), included to show whether a model systematically over- or under-forecasts rather than just how large its errors are.
+- **Mean error (bias)** — signed mean of (forecast - actual), included to show whether a model systematically over- or under-forecasts rather than just how large its errors are. 
+### 1.4 Model-selection rule for the final national forecast
+
+The final forecasting approach will be selected using out-of-sample rolling-origin performance rather than in-sample fit alone.
+
+For the initial 3-year forecast, one forecasting approach will be selected based on its performance across the 1-, 2- and 3-year horizons, with each horizon considered rather than choosing a different model independently for each forecast year. MAE will be the primary error measure, with RMSE, MAPE and mean-error bias used as supporting diagnostics.
+
+The 5-year forecasting exercise will then be evaluated separately. If the evidence supports a different modelling approach at the longer horizon, the overlapping Y1, Y2 and Y3 forecasts from the 3-year and 5-year approaches will be compared directly before a final forecast is reported.
+
+This is intended to avoid selecting a model that performs very well at one horizon but deteriorates materially at another.
+The candidate set comprises seven approaches: naive (last observation), drift, linear trend, simple exponential smoothing (SES), Holt's linear trend, damped-trend exponential smoothing (ETS), and ARIMA. Simple benchmark models are retained deliberately so that the additional statistical complexity is only preferred where it produces better out-of-sample forecasting performance.
+
 
 ## 2. Results
 
@@ -92,8 +104,8 @@ See `outputs/figures/backtest_one_step_ahead.png` for the visual comparison and 
 
 ## 4. Limitations
 
-- **Five benchmarks only, no ARIMA, seasonal, or ML models.** Per the session's dependency-light scope, no seasonal, ARIMA, or regression-with-covariates model was fitted. These benchmarks exist to set a floor that any more complex model should be expected to beat before being adopted; that comparison has not yet been made.
-- **No single model dominates across horizons (Finding 1).** Any downstream use of this work needs to pick a model per horizon rather than adopting one model as "the" forecaster — the best 1-year model (Holt) is one of the worst 5-year models.
+- **Seven candidate models are now compared.** The final comparison includes naive, drift, linear trend, SES, Holt, damped-trend ETS and ARIMA. The simpler five-model benchmark results are retained as an earlier stage of the analysis, but they are no longer the full candidate set.
+- **No single model should be chosen solely because it wins at one horizon.** The final national approach will follow the model-selection rule in Section 1.4: the initial 3-year approach is judged across Y1–Y3, with the 5-year exercise evaluated separately and overlapping Y1–Y3 forecasts compared if the preferred approach changes.
 - **Single-series, national-level only.** This backtest evaluates the England total only. It does not extend to the nine regions or to local authorities (which have their own boundary-change and missing-data complications documented in `docs/initial_feasibility_note.md`), and results here should not be assumed to transfer to those series.
 - **Small number of independent 5-year-horizon origins.** 25 origins sounds reasonable, but consecutive origins share almost all of their training data and many overlapping target years, so the backtest is not 25 independent trials — treat the horizon-level MAE/RMSE/MAPE as indicative of relative model performance, not as precise, independent-sample confidence intervals.
 - **No exogenous drivers.** All five models use only the England total's own history. None accounts for policy changes, register "cleanse" events, or economic conditions that `docs/initial_eda_findings.md` and `docs/initial_feasibility_note.md` note can move the reported count for administrative as well as demand-driven reasons. A model unaware of an upcoming cleanse (or its absence) cannot anticipate the resulting swing.
