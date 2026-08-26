@@ -25,6 +25,7 @@ The immediate goal is to establish a clean and reproducible analytical dataset w
 
 - `docs/data_quality_audit.md` — current validation evidence and open decisions
 - `docs/missing_data_and_imputation.md` — MHCLG missing-data and imputation methodology, Table 600 reconciliation, and forecast-uncertainty implications
+- `docs/forecasting_plan.md` — current national forecasting design, backtesting periods, model-selection rule, horizon comparison, and next-stage scope
 - `docs/project_plan_plain_english.md` — project workflow and objectives
 
 ## Repository structure
