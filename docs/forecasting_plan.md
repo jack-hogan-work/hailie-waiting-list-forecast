@@ -62,3 +62,17 @@ This will include:
 Prediction intervals will be interpreted as model-based uncertainty. They will not be presented as capturing all uncertainty in the underlying administrative data, because publisher imputations and source-data quality introduce additional uncertainty that is documented separately in `missing_data_and_imputation.md`.
 
 The national forecast and its prediction intervals will be reviewed first before deciding what additional regional or explanatory outputs are appropriate.
+## Dataset freeze
+
+The national modelling dataset is now frozen for the final forecasting stage.
+
+- Source: MHCLG Live Table 600
+- Geography: England
+- Period: 1987–2025
+- Annual observations: 39
+- Missing national values: 0
+- National validation: PASS
+- Full Table 600 source-to-output audit: PASS
+- Regional-to-national reconciliation: PASS for all 39 years
+
+No further cleaning, imputation or transformation will be applied to the national modelling series unless a genuine source or processing error is identified.
