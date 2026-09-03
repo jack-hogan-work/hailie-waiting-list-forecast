@@ -103,3 +103,162 @@ No negative forecast values occurred in the regional forward run (checked via `r
 - **AIC grid is bounded (`d` in {1,2}, `p`,`q` in {0,1,2}), not a full auto-ARIMA search.** A wider grid (higher-order p/q, seasonal terms, or an exogenous-regressor ARIMAX) was not attempted; 18 candidates per origin was chosen to keep the regional run (270 origin-fits) under a minute while covering the orders most plausible for a 10-38 point annual series.
 - **All limitations from the national and regional notes still apply**, in full: expanding window, `MIN_TRAIN_YEARS=10`, no exogenous drivers, small/overlapping 5-year origins, and the 2029/h=4 forward-forecast gap. `forecast_statistical.py` now also writes `outputs/national_forecast_2026_2030_extended.csv` (all 7 models, via the same `forward_forecast()` used by `forecast_national.py`, now parameterised by `models=`), and `scripts/build_report.py` highlights, per forecast year, whichever model had the lowest backtested MAPE at that horizon — except 2029 (horizon 4), which the backtest never evaluates (`HORIZONS=[1,2,3,5]`), so no model is highlighted there.
 - **`statsmodels` and its dependencies (`scipy`, `pandas`, `patsy`) are now required** to run this script (though not `scripts/forecast_national.py` or `scripts/forecast_regional.py`, which remain dependency-light as before) — installed only in the project-local `.venv`, recorded in `requirements.txt`.
+## 7. Final national modelling rebuild — September 2026
+
+This section records the final national modelling pipeline rebuilt against the frozen and validated England series. It supersedes the earlier exploratory national model results above. The earlier work is retained for transparency and as a record of development, but the model-selection decisions and forecasts below are the final national results.
+
+### 7.1 Frozen modelling dataset
+
+The national series is the published England total from MHCLG Live Table 600 for 1987–2025.
+
+- Geography: England
+- Period: 1987–2025
+- Annual observations: 39
+- Missing national observations: 0
+- First value (1987): 1,289,492 households
+- Latest observed value (2025): 1,340,527 households
+- National source-to-output validation: PASS
+- Regional-to-national reconciliation: PASS for all 39 years
+
+No additional cleaning, interpolation or imputation was introduced for the England series before modelling.
+
+### 7.2 Candidate models
+
+Seven models were compared:
+
+1. Naive
+2. Drift
+3. Linear trend
+4. Simple Exponential Smoothing (SES)
+5. Holt trend
+6. Damped Holt trend
+7. ARIMA
+
+The annual data have no within-year seasonal frequency, so seasonal models were not used.
+
+SES, Holt and damped Holt were fitted using optimised smoothing parameters within each training window rather than fixed teaching values.
+
+ARIMA was deliberately restricted to a small candidate set:
+
+- ARIMA(0,1,0)
+- ARIMA(1,1,0)
+- ARIMA(0,1,1)
+- ARIMA(1,1,1)
+
+Within each historical training window the converged candidate with the lowest AIC was selected. Failed or non-converged candidate fits were not eligible for selection. Some candidate ARIMA fits generated optimisation warnings during estimation; these are retained as diagnostics rather than hidden. ARIMA ultimately produced results very similar to the naive benchmark and was not selected as the final forecasting model.
+
+### 7.3 Backtesting design
+
+Models were evaluated using expanding-window rolling-origin backtesting.
+
+The first forecast origin was 1996, giving a minimum initial training period of ten annual observations (1987–1996). At each origin, only information available at that date was used.
+
+Evaluated horizons were:
+
+- 1 year: origins 1996–2024 (29 forecasts)
+- 2 years: origins 1996–2023 (28 forecasts)
+- 3 years: origins 1996–2022 (27 forecasts)
+- 5 years: origins 1996–2020 (25 forecasts)
+
+A 4-year backtest was additionally used only to estimate uncertainty for the 2029 point in the final five-year forecast; it was not used for model selection.
+
+The primary model-selection metric was MAE because it is expressed directly in households and is straightforward to interpret. RMSE, MAPE and signed mean error (bias) were retained as supporting diagnostics.
+
+### 7.4 Y1–Y3 model comparison
+
+Damped trend produced the lowest MAE at each of the three primary forecast horizons.
+
+| Model | Y1 MAE | Y2 MAE | Y3 MAE |
+| --- | ---: | ---: | ---: |
+| Naive | 64,900 | 125,174 | 183,588 |
+| Drift | 68,236 | 133,089 | 197,251 |
+| Linear trend | 259,259 | 309,472 | 362,839 |
+| SES | 64,900 | 125,174 | 183,588 |
+| Holt | 59,578 | 128,795 | 204,938 |
+| Damped trend | **55,349** | **114,134** | **178,402** |
+| ARIMA | 64,900 | 125,174 | 183,588 |
+
+Across Y1–Y3, damped trend therefore provided the most consistent performance on the pre-specified primary metric.
+
+Its average MAE across Y1–Y3 was approximately 115,962 households, compared with approximately 124,554 for the naive benchmark, an improvement of around 6.9%.
+
+Damped trend did not dominate every supporting metric at every horizon. In particular, at the three-year horizon the naive/SES/ARIMA forecasts produced slightly lower RMSE and MAPE. The selection therefore should not be interpreted as damped trend being universally superior; rather, it was the most consistent model under the primary selection criterion established before the final comparison.
+
+### 7.5 Five-year model comparison
+
+At the five-year horizon, the simple naive forecast performed best on MAE.
+
+| Model | 5-year MAE |
+| --- | ---: |
+| Naive | **306,435** |
+| SES | **306,435** |
+| ARIMA | **306,435** |
+| Drift | 352,355 |
+| Damped trend | 348,686 |
+| Holt | 433,940 |
+| Linear trend | 477,815 |
+
+Because naive, SES and ARIMA produced effectively equivalent five-year performance, the naive model was selected for the five-year extension on grounds of parsimony and interpretability.
+
+The final modelling strategy is therefore horizon-specific:
+
+- 2026–2028 primary national forecast: damped trend
+- 2026–2030 five-year extension: naive
+
+### 7.6 Final national point forecasts
+
+Using the complete 1987–2025 England series, the selected damped-trend model gives:
+
+| Year | Damped-trend forecast |
+| --- | ---: |
+| 2026 | 1,348,467 |
+| 2027 | 1,354,819 |
+| 2028 | 1,359,901 |
+
+The model therefore suggests a modest increase from the observed 2025 level of 1,340,527 households to approximately 1.36 million by 2028.
+
+The selected five-year naive extension holds the most recent observed level constant:
+
+| Year | Naive five-year forecast |
+| --- | ---: |
+| 2026 | 1,340,527 |
+| 2027 | 1,340,527 |
+| 2028 | 1,340,527 |
+| 2029 | 1,340,527 |
+| 2030 | 1,340,527 |
+
+This flat long-horizon forecast should not be interpreted as a claim that the waiting list will literally remain unchanged. It reflects the finding that, historically, more elaborate trend extrapolation did not improve five-year forecast accuracy relative to the simple last-observation benchmark.
+
+### 7.7 Empirical prediction intervals
+
+Prediction intervals were derived from the empirical distribution of out-of-sample rolling-origin forecast errors at each horizon.
+
+For the selected damped-trend three-year forecast:
+
+| Year | Point forecast | 80% PI | 95% PI |
+| --- | ---: | ---: | ---: |
+| 2026 | 1,348,467 | 1,288,128–1,420,408 | 1,168,582–1,494,999 |
+| 2027 | 1,354,819 | 1,183,078–1,510,443 | 1,013,012–1,656,568 |
+| 2028 | 1,359,901 | 1,169,171–1,667,851 | 736,752–1,857,482 |
+
+For the naive five-year extension:
+
+| Year | Point forecast | 80% PI | 95% PI |
+| --- | ---: | ---: | ---: |
+| 2026 | 1,340,527 | 1,260,300–1,440,785 | 1,130,491–1,510,648 |
+| 2027 | 1,340,527 | 1,179,777–1,545,556 | 892,904–1,634,728 |
+| 2028 | 1,340,527 | 1,026,076–1,625,737 | 805,122–1,755,252 |
+| 2029 | 1,340,527 | 881,080–1,740,476 | 726,978–1,855,037 |
+| 2030 | 1,340,527 | 802,346–1,841,719 | 671,653–1,923,915 |
+
+The widening intervals are an important result rather than a defect: historical forecast error increases substantially with the forecast horizon.
+
+The empirical intervals describe uncertainty observed in historical model performance. They do not automatically include every source of uncertainty in the underlying administrative data, including historical changes in reporting practice, register management, geography or publisher imputation. The very wide long-horizon 95% intervals should therefore be interpreted as indicative uncertainty ranges rather than precise probabilistic guarantees.
+
+### 7.8 Final interpretation
+
+The national modelling does not support a confident claim of a large near-term rise or fall in England's housing waiting list.
+
+The selected three-year model suggests a small upward movement from approximately 1.34 million households in 2025 to approximately 1.36 million in 2028. However, historical forecast errors are sufficiently large that a wide range of outcomes remains plausible.
+
+At five years, simple persistence outperformed extrapolating a trend. This reinforces the conclusion that the point forecast becomes substantially less informative as the horizon increases and that uncertainty should be presented alongside any headline forecast.
