@@ -163,6 +163,9 @@ def main() -> None:
     require('alt="Line chart of England households' in report and 'alt="Small-multiple line charts' in report, "Report chart alt text missing")
     require("#9a6a00" in report, "Report focus indicator contrast token missing")
     require(".hero a:focus-visible" in report and "#ffd166" in report, "Report hero focus indicator contrast missing")
+    require("pre{overflow-x:auto}" in report, "Report code block reflow safeguard missing")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    require("Telford" in readme and "Epping Forest" in readme and "no uncertainty was computed for" in readme, "README limitations are missing regional caveats")
     dashboard = (ROOT / "outputs" / "HAILIE_dashboard.html").read_text(encoding="utf-8")
     for phrase in [
         "Interactive forecast dashboard", "Where could waiting lists be heading?",
@@ -185,6 +188,7 @@ def main() -> None:
     require("#9a6a00" in dashboard and "--teal:#0d6f68" in dashboard, "Dashboard contrast tokens missing")
     require("No uncertainty was computed for these regional extension points" in dashboard, "Dashboard regional extension warning missing")
     require("this five-year England extension includes an empirical 80% range" in dashboard, "England extension range wording missing")
+    require(".grid>.panel{min-width:0}" in dashboard, "Dashboard grid reflow safeguard missing")
     archive_html = list((ROOT / "archive").rglob("*.html"))
     require(archive_html, "No archived HTML reports found")
     for path in archive_html:

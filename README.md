@@ -126,7 +126,11 @@ local-authority practice can affect the series. The forecasts are statistical
 rather than causal, longer-horizon backtests are based on small overlapping
 samples, and the empirical intervals capture historical model error rather than
 every future or source-data uncertainty. The source reference date is 1 April
-up to 2018 and 31 March from 2019 onward. The public dashboard and briefing
-show 80% ranges only. The wider 95% ranges remain available as diagnostic
-historical ranges in the technical report, but their tails are too dependent on
-a few extreme observations to be treated as stable probability limits.
+up to 2018 and 31 March from 2019 onward. Source-noted breaks include Telford
+& Wrekin leaving the register series from 31 March 2021 and Epping Forest
+changing transfer-applicant treatment from 2022–23. Regional 2026–2030
+extensions are point-only planning scenarios: no uncertainty was computed for
+those regional extension points. The public dashboard and briefing show 80%
+ranges only. The wider 95% ranges remain available as diagnostic historical
+ranges in the technical report, but their tails are too dependent on a few
+extreme observations to be treated as stable probability limits.
