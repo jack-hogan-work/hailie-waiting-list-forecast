@@ -162,6 +162,7 @@ def main() -> None:
     require("<html lang=\"en\">" in report and "Skip to main content" in report, "Accessibility shell missing")
     require('alt="Line chart of England households' in report and 'alt="Small-multiple line charts' in report, "Report chart alt text missing")
     require("#9a6a00" in report, "Report focus indicator contrast token missing")
+    require(".hero a:focus-visible" in report and "#ffd166" in report, "Report hero focus indicator contrast missing")
     dashboard = (ROOT / "outputs" / "HAILIE_dashboard.html").read_text(encoding="utf-8")
     for phrase in [
         "Interactive forecast dashboard", "Where could waiting lists be heading?",
@@ -183,6 +184,12 @@ def main() -> None:
     require('scope="col"' in dashboard and 'aria-hidden="true"' not in dashboard, "Dashboard table/legend accessibility attributes missing")
     require("#9a6a00" in dashboard and "--teal:#0d6f68" in dashboard, "Dashboard contrast tokens missing")
     require("No uncertainty was computed for these regional extension points" in dashboard, "Dashboard regional extension warning missing")
+    require("this five-year England extension includes an empirical 80% range" in dashboard, "England extension range wording missing")
+    archive_html = list((ROOT / "archive").rglob("*.html"))
+    require(archive_html, "No archived HTML reports found")
+    for path in archive_html:
+        archived = path.read_text(encoding="utf-8")
+        require("Superseded archive report" in archived, f"Archived HTML missing superseded banner: {path.relative_to(ROOT)}")
     public_chart_builder = (ROOT / "scripts" / "build_public_charts.py").read_text(encoding="utf-8")
     require("lower_95" not in public_chart_builder and "upper_95" not in public_chart_builder, "Public chart still draws 95% bounds")
     briefing_builder = (ROOT / "scripts" / "build_public_briefing.py").read_text(encoding="utf-8")
@@ -190,10 +197,13 @@ def main() -> None:
     require("regional_model_selection.csv" in briefing_builder, "Briefing regional table is missing model selections")
     require("row['lower_80']" in briefing_builder and "row['upper_80']" in briefing_builder, "Briefing regional table is missing 80% ranges")
     require("Regional backtests do not support a strong directional call" in briefing_builder, "Briefing regional caveat is missing")
+    require("an alpha of about 1" in briefing_builder and "alpha≈1" not in briefing_builder, "Briefing evidence wording uses a non-ASCII alpha approximation")
     require("Most regions are broadly stable" not in briefing_builder, "Briefing still presents regional stability as a finding")
     require("xerr=[lower_errors, upper_errors]" in public_chart_builder, "Regional chart is missing 80% error bars")
     briefing = ROOT / "outputs" / "pdf" / "HAILIE_social_housing_waiting_list_briefing.pdf"
     require(briefing.exists() and briefing.stat().st_size > 100_000, "Public briefing PDF is missing or unexpectedly small")
+    audit = (ROOT / "docs" / "data_quality_audit.md").read_text(encoding="utf-8")
+    require("superseded by the final status update above" in audit, "Data-quality audit retains stale status wording")
     require(not (ROOT / "data" / "raw" / "~$Live_Table_600.ods").exists(), "Office lock file remains")
 
     print("Final output schemas and row counts: PASS")

@@ -6,7 +6,7 @@
 > completed. See `docs/final_forecast_methodology.md` and the source assessment
 > below in `outputs/HAILIE_final_report.html`.
 
-**Status at 18 August 2026:** first source audit complete; forecasting remains exploratory.
+**Status at 18 August 2026 (superseded by the final status update above):** first source audit complete; forecasting was exploratory at that checkpoint.
 
 ## Decision gate
 
