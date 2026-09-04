@@ -1,11 +1,10 @@
 # Data Quality and Methodology Audit
 
 > **Final status update — 4 September 2026:** the decision gate below was the
-> checkpoint used before final modelling. Its seven conditions have now been
+> checkpoint used before final modelling. Its conditions have now been
 > addressed for national and regional analysis, and forecasting has resumed and
-> completed. See `docs/final_forecast_methodology.md` and the supervisor review table
-> in `outputs/HAILIE_final_report.html`. Local-authority forecasting remains
-> deliberately excluded because current-boundary continuity was not validated.
+> completed. See `docs/final_forecast_methodology.md` and the source assessment
+> below in `outputs/HAILIE_final_report.html`.
 
 **Status at 18 August 2026:** first source audit complete; forecasting remains exploratory.
 
@@ -41,26 +40,21 @@ This establishes that the repository faithfully reproduces the published table. 
 - Register reviews, choice-based lettings and changes to local qualification rules can create administrative changes in the series.
 - The publisher says the 1987–2004 figures are more prone to error because validation was less rigorous.
 - The source flags specific comparability issues for Telford and Wrekin and Epping Forest.
-- The 376 historical authority rows map to 296 current LAD24 codes. A current-boundary local series has not yet been constructed or validated.
 
-## Four supervisor review points
+## Source assessment
 
 | Point | Evidence/status | Decision |
 | --- | --- | --- |
-| **Table 600** | Source workbook, extracts and processed files now reconcile exactly. Source definitions, markers and 45 publisher imputations are documented. | Use as the core administrative waiting-list series, subject to the remaining geography and comparability work. |
-| **Table 602** | The 25 June 2026 workbook is an England-only annual series of local-authority-owned dwellings let by local authorities, 1981–82 to 2024–25. Latest total lets are 85,229; source notes warn that falling lettings partly reflect stock transfer/sales/demolition and pre-2009–10 data are less certain. | Do not use it to validate or replace Table 600: it is a lettings **flow**, whereas Table 600 is a waiting-list **stock**. Consider it later as national context or a pressure/turnover denominator, with date and scope alignment made explicit. |
+| **Table 600** | Source workbook, extracts and processed files now reconcile exactly. Source definitions, markers and 45 publisher imputations are documented. | Use as the core administrative waiting-list series for England and the nine regions. |
 | **London / LG Inform** | LG Inform metric 105 is the same LAHS Section C concept. Its London values for 2019/20–2024/25 are 250,922; 296,322; 307,365; 323,637; 336,357; and 341,009. These match Table 600's London values for 2020–2025 exactly (6/6). | External consistency check passed for the six available periods. Record the year-label mapping: LG Inform financial-year labels refer to the 31 March endpoint used as the Table 600 year. |
-| **Indices of Multiple Deprivation** | The current source is the English Indices of Deprivation 2025. It is primarily an LSOA-level relative deprivation measure; File 10 provides summaries for 296 local-authority districts, and the publisher says there is no single best authority summary. | Park this until the core waiting-list data and current geography are validated. Then use IoD 2025 for context, segmentation or explanatory analysis—not to clean Table 600 and not automatically as a forecasting input. Test more than one authority summary and document the choice. |
 
 ## What must be true before forecasting resumes
 
 1. The analytical question is explicit: national trend, regional planning, or current-authority comparison.
 2. The relevant Table 600 definition and reference-date changes are documented in the output.
-3. A reproducible current-geography method is agreed if authority-level analysis is required.
-4. Missing markers, source imputations, reported zeroes and special cases have documented handling rules.
-5. At least one independent consistency check is passed at each geography used. London now passes; more checks can be sampled if local-authority modelling proceeds.
-6. Table 602 and IoD are added only for a stated analytical purpose and at a compatible geography/time level.
-7. Models are re-run with leakage-free backtesting, simple baselines and sensitivity tests after the dataset is frozen.
+3. Missing markers, source imputations, reported zeroes and special cases have documented handling rules.
+4. An independent consistency check is passed for the London regional series.
+5. Models are re-run with leakage-free backtesting, simple baselines and sensitivity tests after the dataset is frozen.
 
 ## Reproduce this audit
 
@@ -72,6 +66,5 @@ python3 scripts/validate_national.py
 
 ## External sources checked
 
-- [MHCLG live tables on rents, lettings and tenancies](https://www.gov.uk/government/statistical-data-sets/live-tables-on-rents-lettings-and-tenancies) — official Table 600 and Table 602 workbooks, last updated 25 June 2026.
+- [MHCLG live tables on rents, lettings and tenancies](https://www.gov.uk/government/statistical-data-sets/live-tables-on-rents-lettings-and-tenancies) — official source for Table 600, last updated 25 June 2026.
 - [LG Inform: Total households on the housing waiting list at 31st March in London](https://lginform.local.gov.uk/reports/lgastandard?mod-area=E12000007&mod-group=E12000007&mod-metric=105) — metric 105 consistency check.
-- [English Indices of Deprivation 2025 statistical release](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025/english-indices-of-deprivation-2025-statistical-release) — current official deprivation release and usage guidance.

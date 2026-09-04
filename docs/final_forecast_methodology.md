@@ -30,9 +30,6 @@ published replacement values as observations because they are part of the
 official series, but the resulting source uncertainty is not claimed to be
 captured by the model prediction intervals.
 
-Local-authority forecasting is excluded. Historical authority reorganisations
-mean that a continuous series on current boundaries has not been validated.
-
 ## Candidate models
 
 Seven deliberately interpretable candidates were evaluated for every series:
@@ -46,9 +43,9 @@ Seven deliberately interpretable candidates were evaluated for every series:
 7. ARIMA: select by AIC from `(0,1,0)`, `(1,1,0)`, `(0,1,1)` and `(1,1,1)` within each training window; failed or non-converged fits are excluded.
 
 Seasonal models were not used because the observations are annual and contain
-no within-year seasonal frequency. Exogenous regressors were not added because
-Table 602, deprivation, unemployment and other candidate predictors were not
-shown to add leakage-safe out-of-sample accuracy within the project scope.
+no within-year seasonal frequency. The final models use the annual register
+series directly and are interpreted as statistical forecasts rather than
+causal estimates.
 
 ## Rolling-origin backtesting
 
@@ -145,7 +142,7 @@ identity of the best near-term model is sensitive to historical coverage. It
 does not overturn the full-history pre-specified selection, but it strengthens
 the cautious interpretation and the decision to foreground uncertainty.
 
-## Limitations and excluded extensions
+## Limitations
 
 - The register count is not a complete measure of housing need.
 - Register cleanses can change reported counts without an equivalent change in underlying need.
@@ -153,7 +150,6 @@ the cautious interpretation and the decision to foreground uncertainty.
 - Longer-horizon backtest origins overlap and are not independent trials.
 - Regional models are independent and are not constrained to sum to the national forecast.
 - The alternative-window check is not a formal causal analysis of individual policy breaks.
-- External testing by Tom Stephenson or Myles is not claimed as completed.
 
 The full-precision metrics, selections, forecasts and reproducibility hashes
 are stored in `outputs/final/`.

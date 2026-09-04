@@ -1,4 +1,5 @@
 # Generated HTML deliverables are outputs, not source code. Exclude them from
 # GitHub's language statistics so the repository reflects the Python pipeline.
 outputs/HAILIE_final_report.html linguist-generated
+outputs/HAILIE_dashboard.html linguist-generated
 archive/forecasting_phase/outputs/*.html linguist-generated

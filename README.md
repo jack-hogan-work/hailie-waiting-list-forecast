@@ -9,12 +9,14 @@ Table 600, 1987–2025.
 **Final national and nine-region modelling is complete.** The repository
 contains the validated data pipeline, seven-model rolling-origin comparison,
 final 2026–2028 forecasts, cautious 2026–2030 extensions, empirical 80% and 95%
-prediction intervals, a supervisor concern-to-evidence matrix and a
-self-contained final report.
+prediction intervals, a standalone interactive dashboard and a self-contained
+final report.
 
 Open the canonical deliverable:
 
-- [Final HAILIE report and decision dashboard](outputs/HAILIE_final_report.html)
+- [Interactive HAILIE forecast dashboard](outputs/HAILIE_dashboard.html)
+- [Five-page public briefing](outputs/pdf/HAILIE_social_housing_waiting_list_briefing.pdf)
+- [Final HAILIE analytical report](outputs/HAILIE_final_report.html)
 
 Authoritative full-precision results are under [`outputs/final/`](outputs/final/).
 Earlier exploratory scripts and results are retained only under
@@ -49,14 +51,15 @@ independently because model performance differs across the nine regions.
 
 | Purpose | Location |
 |---|---|
-| Final report, regional selector and supervisor review evidence | [`outputs/HAILIE_final_report.html`](outputs/HAILIE_final_report.html) |
+| Interactive national and regional dashboard | [`outputs/HAILIE_dashboard.html`](outputs/HAILIE_dashboard.html) |
+| Five-page publication briefing | [`outputs/pdf/HAILIE_social_housing_waiting_list_briefing.pdf`](outputs/pdf/HAILIE_social_housing_waiting_list_briefing.pdf) |
+| Final analytical report | [`outputs/HAILIE_final_report.html`](outputs/HAILIE_final_report.html) |
 | Canonical forecasting methodology | [`docs/final_forecast_methodology.md`](docs/final_forecast_methodology.md) |
 | Data-quality and provenance evidence | [`docs/data_quality_audit.md`](docs/data_quality_audit.md) |
 | Missing-data and publisher-imputation evidence | [`docs/missing_data_and_imputation.md`](docs/missing_data_and_imputation.md) |
-| Final report design and review record | [`docs/report_design_and_review.md`](docs/report_design_and_review.md) |
 | Machine-readable final results and run manifest | [`outputs/final/`](outputs/final/) |
 
-## Reproduce the final submission
+## Reproduce the published analysis
 
 Python 3.9 or later is supported.
 
@@ -67,7 +70,10 @@ python3 scripts/audit_table_600.py
 python3 scripts/prepare_data.py
 python3 scripts/validate_national.py
 .venv/bin/python scripts/generate_final_outputs.py
+python3 scripts/build_dashboard.py
 python3 scripts/build_report.py
+.venv/bin/python scripts/build_public_charts.py
+.venv/bin/python scripts/build_public_briefing.py
 python3 scripts/validate_final_submission.py
 ```
 
@@ -86,7 +92,10 @@ builder consumes only those files and does not read archived exploratory data.
 | `scripts/forecast_national_final.py` | Final national forecasting functions |
 | `scripts/forecast_regional_final.py` | Final regional forecasting functions |
 | `scripts/generate_final_outputs.py` | Authoritative metrics, selection, forecast and interval generation |
+| `scripts/build_dashboard.py` | Standalone interactive dashboard generator |
 | `scripts/build_report.py` | Self-contained final report generator |
+| `scripts/build_public_charts.py` | Publication chart generator |
+| `scripts/build_public_briefing.py` | Five-page public PDF generator |
 | `scripts/validate_final_submission.py` | Final output and report QA |
 | `docs/` | Methodology, data-quality evidence and decision records |
 | `outputs/final/` | Authoritative machine-readable results |
@@ -96,8 +105,7 @@ builder consumes only those files and does not read archived exploratory data.
 
 The Table 600 count is not a complete measure of housing need. Register
 administration, policy changes and local-authority practice can affect the
-series. The models contain no causal or external predictors, longer-horizon
+series. The forecasts are statistical rather than causal, longer-horizon
 backtests are based on small overlapping samples, and the empirical intervals
 capture historical model error rather than every future or source-data
-uncertainty. Local-authority forecasts were excluded because changing
-geographies were not reconciled into continuous current-boundary series.
+uncertainty.

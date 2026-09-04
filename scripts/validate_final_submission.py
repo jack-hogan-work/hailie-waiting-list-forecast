@@ -114,13 +114,22 @@ def main() -> None:
 
     report = (ROOT / "outputs" / "HAILIE_final_report.html").read_text(encoding="utf-8")
     for phrase in [
-        "Final analytical submission", "England social housing waiting-list forecast",
+        "HAILIE · Evidence report", "England social housing waiting-list forecast",
         "separate housing-association waiting list", "1,359,901", "mean Y1–Y3 MAE",
-        "Supervisor review and evidence", "Scoped out", "Sensitivity to history and policy breaks",
+        "Limitations", "History-window sensitivity",
     ]:
         require(phrase in report, f"Final report is missing: {phrase}")
     require("Illustrative 2026" not in report, "Archived report language remains")
+    for private_phrase in ["internal review matrix", "named reviewer", "unfinished work register"]:
+        require(private_phrase not in report, f"Public report contains internal wording: {private_phrase}")
     require("<html lang=\"en\">" in report and "Skip to main content" in report, "Accessibility shell missing")
+    dashboard = (ROOT / "outputs" / "HAILIE_dashboard.html").read_text(encoding="utf-8")
+    for phrase in ["Interactive forecast dashboard", "Where could waiting lists be heading?", "Regional picture", "2026–2030 planning"]:
+        require(phrase in dashboard, f"Dashboard is missing: {phrase}")
+    for private_phrase in ["internal review matrix", "named reviewer", "unfinished work register"]:
+        require(private_phrase not in dashboard, f"Dashboard contains internal wording: {private_phrase}")
+    briefing = ROOT / "outputs" / "pdf" / "HAILIE_social_housing_waiting_list_briefing.pdf"
+    require(briefing.exists() and briefing.stat().st_size > 100_000, "Public briefing PDF is missing or unexpectedly small")
     require(not (ROOT / "data" / "raw" / "~$Live_Table_600.ods").exists(), "Office lock file remains")
 
     print("Final output schemas and row counts: PASS")
@@ -129,7 +138,7 @@ def main() -> None:
     print("Regional-to-national reconciliation (39 years): PASS")
     print("Reproducibility manifest hashes: PASS")
     print("Final report content and accessibility shell: PASS")
-    print("FINAL SUBMISSION QA: PASS")
+    print("FINAL PUBLICATION QA: PASS")
 
 
 if __name__ == "__main__":

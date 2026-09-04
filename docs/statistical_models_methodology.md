@@ -6,7 +6,7 @@
 > machine-readable results are in `outputs/final/`. Do not use the archived
 > MAPE-selected outputs as the final forecast.
 
-**Scope note:** the session guardrails asked that no third-party package be installed without checking first. The user was asked directly whether to install `statsmodels` for ARIMA/Holt-Winters, extend to local-authority forecasting instead, or stop; they chose to install `statsmodels`. `requirements.txt` has been updated (`statsmodels==0.14.6`, pulling in `scipy`, `pandas`, `patsy` as transitive dependencies) and the package was installed only into the project-local `.venv`.
+`statsmodels==0.14.6` is pinned in `requirements.txt` so the ARIMA and Holt implementations can be reproduced consistently.
 
 **Source:** same validated England-total and nine-region series used throughout (`docs/national_forecast_methodology.md`, `docs/regional_forecast_methodology.md`).
 **Script:** `scripts/forecast_statistical.py`. This does not duplicate the backtest harness: `run_backtest()`, `forward_forecast()`, and the two chart functions in `scripts/forecast_national.py` were given an optional `models=`/`model_colors=`/`model_labels=` parameter (defaulting to the original five benchmarks, so all prior outputs are unaffected — reproducibility re-confirmed below) specifically so this script could pass in an extended seven-model dict without rewriting the harness. Run with:
