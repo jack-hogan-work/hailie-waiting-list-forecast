@@ -262,3 +262,84 @@ The national modelling does not support a confident claim of a large near-term r
 The selected three-year model suggests a small upward movement from approximately 1.34 million households in 2025 to approximately 1.36 million in 2028. However, historical forecast errors are sufficiently large that a wide range of outcomes remains plausible.
 
 At five years, simple persistence outperformed extrapolating a trend. This reinforces the conclusion that the point forecast becomes substantially less informative as the horizon increases and that uncertainty should be presented alongside any headline forecast.
+
+## Final regional forecasting rebuild
+
+The final regional forecasting pipeline was rebuilt from scratch against the validated processed regional series rather than reusing the archived exploratory forecasting scripts.
+
+### Regional data
+
+The analysis uses the nine English regional series in the processed MHCLG Live Table 600 dataset. England is excluded from the regional modelling loop because it is forecast separately in the national model.
+
+Each regional series contains 39 annual observations from 1987 to 2025. The regional loader validates that exactly nine regional series are present, that all expected years are available, that each series contains 39 observations, and that no negative household values are present.
+
+### Candidate models
+
+The same seven candidate approaches used for the final national analysis were evaluated regionally:
+
+- naive
+- drift
+- linear trend
+- simple exponential smoothing (SES)
+- Holt's linear trend
+- damped-trend Holt
+- ARIMA
+
+The ARIMA search was deliberately restricted to a small set of simple first-difference specifications because each regional series contains only 39 annual observations. Candidate ARIMA fits that failed to converge were excluded rather than treated as valid forecasts.
+
+### Backtesting
+
+Regional model performance was assessed using expanding-window rolling-origin backtesting with the same origin structure as the national analysis:
+
+- 1-year horizon: origins 1996-2024 (29 forecasts)
+- 2-year horizon: origins 1996-2023 (28 forecasts)
+- 3-year horizon: origins 1996-2022 (27 forecasts)
+- 5-year horizon: origins 1996-2020 (25 forecasts)
+
+At each historical origin, the model is fitted only to observations available at that point. No observations from the forecast target period are included in training.
+
+MAE is the primary model-selection metric. RMSE, MAPE and mean forecast error (bias) are retained as supporting diagnostics.
+
+### Three-year regional model selection
+
+For the main 2026-2028 regional forecasts, each model's MAE was calculated separately at the 1-, 2- and 3-year horizons. These three MAEs were then averaged, and the model with the lowest mean Y1-Y3 MAE was selected for that region.
+
+The selected models were:
+
+- East Midlands: ARIMA
+- East of England: naive
+- London: naive
+- North East: naive
+- North West: naive
+- South East: damped trend
+- South West: drift
+- West Midlands: naive
+- Yorkshire and The Humber: naive
+
+This procedure avoids selecting a different model independently for each individual forecast year and provides one consistent short-horizon forecasting approach for each region.
+
+### Five-year regional model selection
+
+The 5-year horizon was evaluated separately rather than assuming that the selected 1-3 year model would remain optimal at longer horizons.
+
+The selected 5-year models were:
+
+- East Midlands: naive
+- East of England: naive
+- London: naive
+- North East: ARIMA
+- North West: naive
+- South East: damped trend
+- South West: drift
+- West Midlands: naive
+- Yorkshire and The Humber: naive
+
+### Regional prediction intervals
+
+The final 2026-2028 regional point forecasts are accompanied by empirical 80% and 95% prediction intervals.
+
+For each selected regional model and forecast horizon, the historical rolling-origin forecast errors at that horizon are used to estimate the error distribution. The corresponding empirical error quantiles are then applied to the final point forecast.
+
+These intervals therefore represent uncertainty observed in historical model forecast performance. They do not automatically incorporate every possible source-data uncertainty, administrative change or publisher-imputation uncertainty in the underlying MHCLG series.
+
+Regional uncertainty generally increases with forecast horizon, and the width of the intervals varies substantially across regions. The regional forecasts should therefore be interpreted alongside their prediction intervals rather than as precise point estimates.
