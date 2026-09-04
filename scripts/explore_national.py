@@ -111,7 +111,7 @@ def make_england_full_chart(england_series):
     line_chart(
         years,
         values,
-        "England: households on local authority housing waiting lists, 1987–2025",
+        "England social housing waiting list: households on local authority registers, 1987–2025",
         "Households on the register",
         FIGURES_DIR / "england_waiting_list_1987_2025.png",
     )
@@ -123,7 +123,7 @@ def make_england_recent_chart(england_series):
     line_chart(
         years,
         values,
-        "England: households on local authority housing waiting lists, 2010–2025",
+        "England social housing waiting list: households on local authority registers, 2010–2025",
         "Households on the register",
         FIGURES_DIR / "england_waiting_list_2010_2025.png",
     )
@@ -132,7 +132,7 @@ def make_england_recent_chart(england_series):
 def make_regional_small_multiples(regional_data):
     fig, axes = plt.subplots(3, 3, figsize=(13, 10), facecolor=SURFACE, sharex=True)
     fig.suptitle(
-        "Households on local authority housing waiting lists by English region, 1987–2025",
+        "Social housing waiting list: households on local authority registers by English region, 1987–2025",
         fontsize=14,
         color=INK_PRIMARY,
         x=0.02,

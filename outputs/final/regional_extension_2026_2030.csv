@@ -1,0 +1,46 @@
+region,area_code,forecast_year,horizon_years,selected_model,selected_model_label,point_forecast
+East Midlands,E12000004,2026,1,naive,Naive,84013.000000
+East Midlands,E12000004,2027,2,naive,Naive,84013.000000
+East Midlands,E12000004,2028,3,naive,Naive,84013.000000
+East Midlands,E12000004,2029,4,naive,Naive,84013.000000
+East Midlands,E12000004,2030,5,naive,Naive,84013.000000
+East of England,E12000006,2026,1,naive,Naive,91871.000000
+East of England,E12000006,2027,2,naive,Naive,91871.000000
+East of England,E12000006,2028,3,naive,Naive,91871.000000
+East of England,E12000006,2029,4,naive,Naive,91871.000000
+East of England,E12000006,2030,5,naive,Naive,91871.000000
+London,E12000007,2026,1,naive,Naive,341009.000000
+London,E12000007,2027,2,naive,Naive,341009.000000
+London,E12000007,2028,3,naive,Naive,341009.000000
+London,E12000007,2029,4,naive,Naive,341009.000000
+London,E12000007,2030,5,naive,Naive,341009.000000
+North East,E12000001,2026,1,arima,ARIMA,63211.000000
+North East,E12000001,2027,2,arima,ARIMA,63211.000000
+North East,E12000001,2028,3,arima,ARIMA,63211.000000
+North East,E12000001,2029,4,arima,ARIMA,63211.000000
+North East,E12000001,2030,5,arima,ARIMA,63211.000000
+North West,E12000002,2026,1,naive,Naive,209887.000000
+North West,E12000002,2027,2,naive,Naive,209887.000000
+North West,E12000002,2028,3,naive,Naive,209887.000000
+North West,E12000002,2029,4,naive,Naive,209887.000000
+North West,E12000002,2030,5,naive,Naive,209887.000000
+South East,E12000008,2026,1,damped_trend,Damped Holt trend,117463.515455
+South East,E12000008,2027,2,damped_trend,Damped Holt trend,117310.409323
+South East,E12000008,2028,3,damped_trend,Damped Holt trend,117187.924418
+South East,E12000008,2029,4,damped_trend,Damped Holt trend,117089.936494
+South East,E12000008,2030,5,damped_trend,Damped Holt trend,117011.546155
+South West,E12000009,2026,1,drift,Drift,134446.210526
+South West,E12000009,2027,2,drift,Drift,135661.421053
+South West,E12000009,2028,3,drift,Drift,136876.631579
+South West,E12000009,2029,4,drift,Drift,138091.842105
+South West,E12000009,2030,5,drift,Drift,139307.052632
+West Midlands,E12000005,2026,1,naive,Naive,127179.000000
+West Midlands,E12000005,2027,2,naive,Naive,127179.000000
+West Midlands,E12000005,2028,3,naive,Naive,127179.000000
+West Midlands,E12000005,2029,4,naive,Naive,127179.000000
+West Midlands,E12000005,2030,5,naive,Naive,127179.000000
+Yorkshire and The Humber,E12000003,2026,1,naive,Naive,172536.000000
+Yorkshire and The Humber,E12000003,2027,2,naive,Naive,172536.000000
+Yorkshire and The Humber,E12000003,2028,3,naive,Naive,172536.000000
+Yorkshire and The Humber,E12000003,2029,4,naive,Naive,172536.000000
+Yorkshire and The Humber,E12000003,2030,5,naive,Naive,172536.000000

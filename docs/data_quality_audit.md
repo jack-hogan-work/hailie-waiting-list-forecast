@@ -1,5 +1,12 @@
 # Data Quality and Methodology Audit
 
+> **Final status update — 4 September 2026:** the decision gate below was the
+> checkpoint used before final modelling. Its seven conditions have now been
+> addressed for national and regional analysis, and forecasting has resumed and
+> completed. See `docs/final_forecast_methodology.md` and the José closure table
+> in `outputs/HAILIE_final_report.html`. Local-authority forecasting remains
+> deliberately excluded because current-boundary continuity was not validated.
+
 **Status at 18 August 2026:** first source audit complete; forecasting remains exploratory.
 
 ## Decision gate

@@ -1,812 +1,429 @@
 #!/usr/bin/env python3
-"""Week 2 consolidated project report for MHCLG Live Table 600 waiting-list work.
+"""Build the canonical self-contained HAILIE final report.
 
-Assembles a single, self-contained HTML report (outputs/report.html) from the
-already-generated, already-validated outputs of the rest of the pipeline: the
-processed data, the national/regional/statistical backtest result CSVs, and a
-selection of the chart PNGs (embedded as base64 data URIs so the report is one
-portable file with no external references).
-
-This script does not compute anything new - every number in the report is read
-directly from a CSV already produced and QA-checked by an earlier script (see
-docs/*.md for how each was derived). It should be run last, after:
-    python3 scripts/prepare_data.py
-    python3 scripts/validate_national.py
-    .venv/bin/python3 scripts/explore_national.py
-    .venv/bin/python3 scripts/forecast_national.py
-    .venv/bin/python3 scripts/forecast_regional.py
-    .venv/bin/python3 scripts/forecast_statistical.py
-
-Standard library only (csv, base64, pathlib, datetime, html). Run with:
-    python3 scripts/build_report.py
+The report consumes only the authoritative files in ``outputs/final``.  Run
+``scripts/generate_final_outputs.py`` first; archived exploratory outputs are
+never read by this script.
 """
+
+from __future__ import annotations
 
 import base64
 import csv
 import html
-from datetime import date, datetime, timezone
+import json
+from datetime import date
 from pathlib import Path
 
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED_PATH = REPO_ROOT / "data" / "processed" / "regional_waiting_lists_long.csv"
-OUTPUTS_DIR = REPO_ROOT / "outputs"
-FIGURES_DIR = OUTPUTS_DIR / "figures"
-
-ENGLAND_AREA_CODE = "E92000001"
-REGION_ORDER = [
-    ("E12000001", "North East"),
-    ("E12000002", "North West"),
-    ("E12000003", "Yorkshire and The Humber"),
-    ("E12000004", "East Midlands"),
-    ("E12000005", "West Midlands"),
-    ("E12000006", "East of England"),
-    ("E12000007", "London"),
-    ("E12000008", "South East"),
-    ("E12000009", "South West"),
-]
-
-MODEL_LABELS = {
-    "naive": "Naive",
-    "drift": "Drift",
-    "linear_trend": "Linear trend",
-    "ses": "SES",
-    "holt": "Holt's linear",
-    "ets_damped": "ETS damped trend",
-    "arima": "ARIMA",
-}
-
-IMAGES = [
-    ("england_waiting_list_1987_2025.png", "England households on the register, 1987-2025"),
-    ("england_annual_percentage_change.png", "Year-on-year percentage change, 1988-2025"),
-    ("regional_waiting_list_trends.png", "The nine English regions, 1987-2025 (small multiples)"),
-    ("backtest_one_step_ahead_extended.png", "Actual vs. 1-year-ahead backtested forecasts, all 7 models"),
-    ("backtest_mape_by_horizon_extended.png", "Backtest MAPE by horizon, all 7 models"),
-    ("regional_backtest_mape_heatmap.png", "Regional backtest MAPE by model, 1-year vs. 5-year horizon"),
-    ("regional_win_counts_extended.png", "Regions where each model has the lowest MAPE, by horizon"),
-    ("regional_forecast_change_2025_2030.png", "Regional 2025-2030 change: backtest-selected model vs. range across 6 competitive models"),
-    ("regional_forecast_trajectories_2026_2030.png", "Regional trajectories: actual 2015-2025 plus 2026-2030 forecast (backtest-selected model)"),
-]
+DATA_PATH = REPO_ROOT / "data" / "processed" / "regional_waiting_lists_long.csv"
+FINAL_DIR = REPO_ROOT / "outputs" / "final"
+FIGURES_DIR = REPO_ROOT / "outputs" / "figures"
+REPORT_PATH = REPO_ROOT / "outputs" / "HAILIE_final_report.html"
+ENGLAND_CODE = "E92000001"
 
 
-# --- Data loading (re-derived from source CSVs, nothing hardcoded) ------------
+def load_csv(path: Path) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8", newline="") as input_file:
+        return list(csv.DictReader(input_file))
 
 
-def load_series(area_code):
-    series = {}
-    with PROCESSED_PATH.open(encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
-            if row["Area code"] != area_code:
-                continue
-            v = row["households_on_register"]
-            if v != "":
-                series[int(row["year"])] = int(v)
+def load_observations() -> dict[str, dict]:
+    series: dict[str, dict] = {}
+    for row in load_csv(DATA_PATH):
+        code = row["Area code"]
+        series.setdefault(code, {"name": row["Region"], "values": {}})
+        if row["households_on_register"]:
+            series[code]["values"][int(row["year"])] = int(row["households_on_register"])
     return series
 
 
-def load_csv_rows(path):
-    with path.open(encoding="utf-8", newline="") as f:
-        return list(csv.DictReader(f))
+def fmt(value: float | str) -> str:
+    return f"{float(value):,.0f}"
 
 
-def compute_headline_stats():
-    england = load_series(ENGLAND_AREA_CODE)
-    years = sorted(england)
-    v1987, v2025 = england[1987], england[2025]
-    v2020 = england[2020]
-    peak_year = max(years, key=lambda y: england[y])
-    trough_year = min(years, key=lambda y: england[y])
-    return {
-        "v1987": v1987,
-        "v2025": v2025,
-        "change_87_25_abs": v2025 - v1987,
-        "change_87_25_pct": 100 * (v2025 - v1987) / v1987,
-        "v2020": v2020,
-        "change_20_25_abs": v2025 - v2020,
-        "change_20_25_pct": 100 * (v2025 - v2020) / v2020,
-        "peak_year": peak_year,
-        "peak_value": england[peak_year],
-        "trough_year": trough_year,
-        "trough_value": england[trough_year],
-    }
+def fmt_pct(value: float) -> str:
+    return f"{value:+.1f}%"
 
 
-def regional_2025_snapshot():
-    rows = []
-    for code, name in REGION_ORDER:
-        series = load_series(code)
-        rows.append((name, series[2025]))
-    return sorted(rows, key=lambda r: -r[1])
+def image_data(filename: str) -> str:
+    return base64.b64encode((FIGURES_DIR / filename).read_bytes()).decode("ascii")
 
 
-def best_per_horizon(summary_rows, horizons=(1, 2, 3, 5)):
-    best = {}
-    for h in horizons:
-        candidates = [r for r in summary_rows if int(r["horizon_years"]) == h]
-        best[h] = min(candidates, key=lambda r: float(r["mape_pct"]))
-    return best
-
-
-def regional_best_model_table(regional_extended_rows, horizon):
-    out = []
-    for code, name in REGION_ORDER:
-        candidates = [r for r in regional_extended_rows if r["region_code"] == code and int(r["horizon_years"]) == horizon]
-        best = min(candidates, key=lambda r: float(r["mape_pct"]))
-        out.append((name, MODEL_LABELS.get(best["model"], best["model"]), float(best["mape_pct"])))
-    return out
-
-
-def encode_image(filename):
-    data = (FIGURES_DIR / filename).read_bytes()
-    return base64.b64encode(data).decode("ascii")
-
-
-# --- HTML rendering -------------------------------------------------------------
-
-
-def fmt(n):
-    return f"{n:,.0f}"
-
-
-def fmt_pct(n, sign=False):
-    s = "+" if sign and n >= 0 else ""
-    return f"{s}{n:.1f}%"
-
-
-def render_model_results_table(summary_rows, horizons=(1, 2, 3, 5)):
-    model_order = ["ets_damped", "arima", "holt", "naive", "ses", "drift", "linear_trend"]
-    rows_by_model = {}
-    for r in summary_rows:
-        rows_by_model.setdefault(r["model"], {})[int(r["horizon_years"])] = r
-
-    thead = "<tr><th>Model</th>" + "".join(f"<th>{h}-year MAPE</th>" for h in horizons) + "</tr>"
-    body_rows = []
-    for model in model_order:
-        if model not in rows_by_model:
-            continue
-        cells = [f'<td class="model-name">{MODEL_LABELS.get(model, model)}</td>']
-        for h in horizons:
-            r = rows_by_model[model].get(h)
-            mape = float(r["mape_pct"]) if r else None
-            cell_class = "best-cell" if mape is not None and mape == min(
-                float(rows_by_model[m][h]["mape_pct"]) for m in rows_by_model if h in rows_by_model[m]
-            ) else ""
-            cells.append(f'<td class="num {cell_class}">{mape:.2f}%</td>' if mape is not None else "<td class=\"num\">-</td>")
-        body_rows.append("<tr>" + "".join(cells) + "</tr>")
-    return f'<table class="data-table"><thead>{thead}</thead><tbody>{"".join(body_rows)}</tbody></table>'
-
-
-def render_regional_snapshot_table(snapshot):
-    rows = "".join(f"<tr><td>{html.escape(name)}</td><td class='num'>{fmt(v)}</td></tr>" for name, v in snapshot)
-    return f'<table class="data-table"><thead><tr><th>Region</th><th>Households on the register, 2025</th></tr></thead><tbody>{rows}</tbody></table>'
-
-
-def render_regional_best_model_table(rows_1y, rows_5y):
+def table(headers: list[str], rows: list[list[str]], caption: str, row_headers: bool = False) -> str:
+    header_html = "".join(f'<th scope="col">{html.escape(header)}</th>' for header in headers)
     body = []
-    for (name, model1, mape1), (_, model5, mape5) in zip(rows_1y, rows_5y):
-        body.append(
-            f"<tr><td>{html.escape(name)}</td>"
-            f"<td class='model-name'>{model1} <span class='num muted'>({mape1:.1f}%)</span></td>"
-            f"<td class='model-name'>{model5} <span class='num muted'>({mape5:.1f}%)</span></td></tr>"
-        )
+    for row in rows:
+        cells = []
+        for index, value in enumerate(row):
+            tag = "th" if row_headers and index == 0 else "td"
+            scope = ' scope="row"' if tag == "th" else ""
+            cells.append(f"<{tag}{scope}>{value}</{tag}>")
+        body.append("<tr>" + "".join(cells) + "</tr>")
     return (
-        "<table class='data-table'><thead><tr><th>Region</th><th>Best model, 1-year</th>"
-        f"<th>Best model, 5-year</th></tr></thead><tbody>{''.join(body)}</tbody></table>"
+        '<div class="table-wrap"><table><caption>'
+        + html.escape(caption)
+        + "</caption><thead><tr>"
+        + header_html
+        + "</tr></thead><tbody>"
+        + "".join(body)
+        + "</tbody></table></div>"
     )
 
 
-def render_forward_forecast_table(rows, best=None):
-    """best, if given, is the {horizon_years: summary_row} dict from best_per_horizon()
-    (the same backtest-evaluation result used elsewhere in the report) - each forward
-    year is mapped to its horizon (target_year - 2025) and the cell for that year's
-    backtest-winning model is highlighted, so the forecast table's emphasis matches
-    the evaluation results rather than being selected independently. 2029 (horizon 4)
-    has no highlighted cell: HORIZONS=[1,2,3,5] in the backtest never evaluates a
-    4-year horizon, so there is no evaluation result to select from at that year."""
-    by_model = {}
-    years = sorted({int(r["target_year"]) for r in rows})
-    for r in rows:
-        by_model.setdefault(r["model"], {})[int(r["target_year"])] = float(r["forecast"])
-    model_order = ["ets_damped", "arima", "holt", "naive", "ses", "drift", "linear_trend"]
-    best = best or {}
-    origin_year = min(years) - 1
-    best_model_by_year = {y: best[y - origin_year]["model"] for y in years if (y - origin_year) in best}
-    thead = "<tr><th>Model</th>" + "".join(f"<th>{y}</th>" for y in years) + "</tr>"
-    body_rows = []
-    for model in model_order:
-        if model not in by_model:
-            continue
-        cells = [f'<td class="model-name">{MODEL_LABELS.get(model, model)}</td>']
-        for y in years:
-            cell_class = "best-cell" if best_model_by_year.get(y) == model else ""
-            cells.append(f'<td class="num {cell_class}">{fmt(by_model[model][y])}</td>')
-        body_rows.append("<tr>" + "".join(cells) + "</tr>")
-    return f'<table class="data-table"><thead>{thead}</thead><tbody>{"".join(body_rows)}</tbody></table>'
+def build_region_panels(
+    observations: dict[str, dict],
+    regional_forecasts: list[dict[str, str]],
+    selections: list[dict[str, str]],
+) -> tuple[str, str, str]:
+    selection_by_code = {row["area_code"]: row for row in selections}
+    forecasts_by_code: dict[str, list[dict[str, str]]] = {}
+    for row in regional_forecasts:
+        forecasts_by_code.setdefault(row["area_code"], []).append(row)
+
+    options = []
+    panels = []
+    comparison_rows = []
+    for code in sorted(forecasts_by_code, key=lambda value: observations[value]["name"]):
+        name = observations[code]["name"]
+        latest = observations[code]["values"][2025]
+        forecast_rows = sorted(forecasts_by_code[code], key=lambda row: int(row["forecast_year"]))
+        final_row = forecast_rows[-1]
+        point_2028 = float(final_row["point_forecast"])
+        change_pct = 100 * (point_2028 - latest) / latest
+        direction = "increase" if change_pct > 0.05 else "decrease" if change_pct < -0.05 else "broadly flat"
+        change_phrase = (
+            f"an increase of {fmt_pct(change_pct)}"
+            if direction == "increase"
+            else f"a decrease of {fmt_pct(change_pct)}"
+            if direction == "decrease"
+            else f"broadly unchanged ({fmt_pct(change_pct)})"
+        )
+        selection = selection_by_code[code]
+        options.append(f'<option value="{html.escape(code)}">{html.escape(name)}</option>')
+        comparison_rows.append(
+            [
+                html.escape(name),
+                fmt(latest),
+                fmt(point_2028),
+                f"{html.escape(direction)} ({fmt_pct(change_pct)})",
+                html.escape(selection["primary_model_label"]),
+            ]
+        )
+        forecast_table = table(
+            ["Year", "Point forecast", "80% interval", "95% interval"],
+            [
+                [
+                    row["forecast_year"],
+                    fmt(row["point_forecast"]),
+                    f'{fmt(row["lower_80"])}–{fmt(row["upper_80"])}',
+                    f'{fmt(row["lower_95"])}–{fmt(row["upper_95"])}',
+                ]
+                for row in forecast_rows
+            ],
+            f"{name}: final 2026–2028 forecast and empirical prediction intervals",
+        )
+        panels.append(
+            f'''<section class="region-panel" id="region-{html.escape(code)}" hidden>
+              <h3>{html.escape(name)}</h3>
+              <p><strong>2025 observed:</strong> {fmt(latest)} households. <strong>2028 forecast:</strong>
+              {fmt(point_2028)}, {html.escape(change_phrase)}. The selected short-horizon
+              model is {html.escape(selection["primary_model_label"])}; the separately selected five-year
+              extension model is {html.escape(selection["extension_model_label"])}.</p>
+              {forecast_table}
+            </section>'''
+        )
+
+    comparison_rows.sort(key=lambda row: float(row[2].replace(",", "")), reverse=True)
+    comparison_table = table(
+        ["Region", "2025 observed", "2028 forecast", "Direction", "Selected model"],
+        comparison_rows,
+        "Regional 2025 observations and final 2028 short-horizon forecasts",
+        row_headers=True,
+    )
+    return "".join(options), "".join(panels), comparison_table
 
 
-def image_block(filename, caption, img_data):
-    return f"""
-    <figure class="chart-card">
-      <img src="data:image/png;base64,{img_data}" alt="{html.escape(caption)}" loading="lazy" />
-      <figcaption>{html.escape(caption)}</figcaption>
-    </figure>
-    """
+def main() -> None:
+    required = [
+        "national_model_metrics.csv",
+        "national_model_selection.csv",
+        "national_forecast_2026_2028.csv",
+        "national_extension_2026_2030.csv",
+        "national_history_sensitivity.csv",
+        "regional_model_metrics.csv",
+        "regional_model_selection.csv",
+        "regional_forecast_2026_2028.csv",
+        "regional_extension_2026_2030.csv",
+    ]
+    missing = [name for name in required if not (FINAL_DIR / name).exists()]
+    if missing:
+        raise FileNotFoundError(
+            "Missing final outputs: " + ", ".join(missing) + ". Run scripts/generate_final_outputs.py first."
+        )
+
+    observations = load_observations()
+    national_forecasts = load_csv(FINAL_DIR / "national_forecast_2026_2028.csv")
+    national_extension = load_csv(FINAL_DIR / "national_extension_2026_2030.csv")
+    national_metrics = load_csv(FINAL_DIR / "national_model_metrics.csv")
+    history_sensitivity = load_csv(FINAL_DIR / "national_history_sensitivity.csv")
+    regional_forecasts = load_csv(FINAL_DIR / "regional_forecast_2026_2028.csv")
+    regional_selections = load_csv(FINAL_DIR / "regional_model_selection.csv")
+
+    england = observations[ENGLAND_CODE]["values"]
+    latest = england[2025]
+    national_2028 = next(row for row in national_forecasts if row["forecast_year"] == "2028")
+    national_change = 100 * (float(national_2028["point_forecast"]) - latest) / latest
+
+    national_table = table(
+        ["Year", "Point forecast", "80% interval", "95% interval", "Selected model"],
+        [
+            [
+                row["forecast_year"],
+                fmt(row["point_forecast"]),
+                f'{fmt(row["lower_80"])}–{fmt(row["upper_80"])}',
+                f'{fmt(row["lower_95"])}–{fmt(row["upper_95"])}',
+                html.escape(row["selected_model_label"]),
+            ]
+            for row in national_forecasts
+        ],
+        "Final England forecast for 2026–2028",
+    )
+
+    extension_by_year = {row["forecast_year"]: row for row in national_extension}
+    overlap_table = table(
+        ["Year", "Primary damped-trend forecast", "Naive five-year extension", "Difference"],
+        [
+            [
+                row["forecast_year"],
+                fmt(row["point_forecast"]),
+                fmt(extension_by_year[row["forecast_year"]]["point_forecast"]),
+                fmt(float(row["point_forecast"]) - float(extension_by_year[row["forecast_year"]]["point_forecast"])),
+            ]
+            for row in national_forecasts
+        ],
+        "Direct comparison of overlapping 2026–2028 forecasts",
+    )
+
+    extension_table = table(
+        ["Year", "Point forecast", "80% interval", "95% interval"],
+        [
+            [
+                row["forecast_year"],
+                fmt(row["point_forecast"]),
+                f'{fmt(row["lower_80"])}–{fmt(row["upper_80"])}',
+                f'{fmt(row["lower_95"])}–{fmt(row["upper_95"])}',
+            ]
+            for row in national_extension
+        ],
+        "England five-year naive extension, 2026–2030",
+    )
+
+    region_options, region_panels, regional_comparison = build_region_panels(
+        observations, regional_forecasts, regional_selections
+    )
+
+    selection_table = table(
+        ["Region", "2026–2028 model", "Mean Y1–Y3 MAE", "2026–2030 model", "Y5 MAE"],
+        [
+            [
+                html.escape(row["region"]),
+                html.escape(row["primary_model_label"]),
+                fmt(row["mean_y1_y3_mae_households"]),
+                html.escape(row["extension_model_label"]),
+                fmt(row["y5_mae_households"]),
+            ]
+            for row in regional_selections
+        ],
+        "Final regional model selections using MAE",
+        row_headers=True,
+    )
+
+    metrics_by_model: dict[str, dict[int, str]] = {}
+    labels = {}
+    for row in national_metrics:
+        metrics_by_model.setdefault(row["model"], {})[int(row["horizon_years"])] = fmt(row["mae_households"])
+        labels[row["model"]] = row["model_label"]
+    national_metrics_table = table(
+        ["Model", "Y1 MAE", "Y2 MAE", "Y3 MAE", "Y5 MAE"],
+        [
+            [html.escape(labels[model])] + [metrics_by_model[model][horizon] for horizon in [1, 2, 3, 5]]
+            for model in ["naive", "drift", "linear_trend", "ses", "holt", "damped_trend", "arima"]
+        ],
+        "National rolling-origin model performance; MAE in households (lower is better)",
+        row_headers=True,
+    )
+
+    model_order = ["naive", "drift", "linear_trend", "ses", "holt", "damped_trend", "arima"]
+
+    def sensitivity_selection(records: list[dict[str, str]]) -> tuple[str, float, str, float, int, int]:
+        metric = {(row["model"], int(row["horizon_years"])): float(row["mae_households"]) for row in records}
+        names = {row["model"]: row["model_label"] for row in records}
+        primary_scores = {model: sum(metric[(model, horizon)] for horizon in [1, 2, 3]) / 3 for model in model_order}
+        extension_scores = {model: metric[(model, 5)] for model in model_order}
+        primary = min(model_order, key=lambda model: (primary_scores[model], model_order.index(model)))
+        extension = min(model_order, key=lambda model: (extension_scores[model], model_order.index(model)))
+        first = next(row for row in records if row["model"] == primary and row["horizon_years"] == "1")
+        fifth = next(row for row in records if row["model"] == extension and row["horizon_years"] == "5")
+        return names[primary], primary_scores[primary], names[extension], extension_scores[extension], int(first["forecast_origins"]), int(fifth["forecast_origins"])
+
+    sensitivity_groups = {
+        "1987 (full, pre-specified)": national_metrics,
+        "1998 (first trough onward)": [row for row in history_sensitivity if row["history_start_year"] == "1998"],
+        "2005 (stronger-validation era)": [row for row in history_sensitivity if row["history_start_year"] == "2005"],
+    }
+    sensitivity_table = table(
+        ["History window", "Y1–Y3 winner", "Mean MAE", "Y5 winner", "Y5 MAE", "Y1 / Y5 origins"],
+        [
+            [html.escape(label), html.escape(result[0]), fmt(result[1]), html.escape(result[2]), fmt(result[3]), f"{result[4]} / {result[5]}"]
+            for label, result in ((label, sensitivity_selection(records)) for label, records in sensitivity_groups.items())
+        ],
+        "Sensitivity of national model selection to the amount of history used",
+        row_headers=True,
+    )
+
+    jose_table = table(
+        ["José’s question or concern", "Action and evidence", "Closure"],
+        [
+            ["Provenance and processing integrity", "Raw Table 600 is retained; scripted extraction and validation reconcile all nine regions to England for all 39 years.", '<span class="status closed">Closed</span>'],
+            ["Meaning of [x], [z], blanks, zeroes and imputations", "Publisher markers were audited: 45 MHCLG replacements, 1,421 [z], 2 [x] and 8 genuine zeroes. No new values were imputed by this project.", '<span class="status closed">Closed</span>'],
+            ["Independent check", "Six London periods were checked against LG Inform and all six matched after documenting year-label alignment.", '<span class="status closed">Closed</span>'],
+            ["Objective and forecast horizon", "The target is the annual England household count, with a primary three-year forecast and a separately selected five-year extension.", '<span class="status closed">Closed</span>'],
+            ["Out-of-sample evaluation and leakage", "Expanding-window rolling-origin backtests use only information available at each origin; horizons 1, 2, 3 and 5 are assessed separately.", '<span class="status closed">Closed</span>'],
+            ["How the model was chosen", "Seven models were compared. MAE is the primary metric; RMSE, MAPE and bias are diagnostics. Parsimony resolves materially tied performance.", '<span class="status closed">Closed</span>'],
+            ["Different three- and five-year models", "The overlapping forecasts are compared directly above. Their 2028 difference is about 19,374 households (1.4%), small relative to the empirical intervals.", '<span class="status closed">Closed</span>'],
+            ["Prediction uncertainty", "Every primary forecast includes empirical 80% and 95% intervals derived from historical out-of-sample errors; source-data uncertainty is discussed separately.", '<span class="status closed">Closed</span>'],
+            ["Table 602 and other predictors", "They were not merged into the final model: flow and contextual measures require timing, alignment and leakage tests before use, and no out-of-sample gain was demonstrated.", '<span class="status scoped">Scoped out</span>'],
+            ["Changing local-authority geography", "Local-authority forecasts were excluded because a continuous current-boundary series was not validated. National and nine-region series are used instead.", '<span class="status scoped">Scoped out</span>'],
+            ["Sensitivity to history and policy breaks", "The model comparison was repeated from 1998 and 2005. The near-term winner changes, while naive remains the five-year winner. This supports cautious interpretation; a causal policy-break analysis was not attempted.", '<span class="status closed">Tested</span>'],
+        ],
+        "Supervisor concern-to-evidence closure matrix",
+        row_headers=True,
+    )
+
+    html_out = TEMPLATE
+    replacements = {
+        "__GENERATED_DATE__": date.today().strftime("%-d %B %Y"),
+        "__LATEST__": fmt(latest),
+        "__FORECAST_2028__": fmt(national_2028["point_forecast"]),
+        "__CHANGE_2028__": fmt_pct(national_change),
+        "__PI80_2028__": f'{fmt(national_2028["lower_80"])}–{fmt(national_2028["upper_80"])}',
+        "__NATIONAL_TABLE__": national_table,
+        "__OVERLAP_TABLE__": overlap_table,
+        "__EXTENSION_TABLE__": extension_table,
+        "__REGION_OPTIONS__": region_options,
+        "__REGION_PANELS__": region_panels,
+        "__REGIONAL_COMPARISON__": regional_comparison,
+        "__SELECTION_TABLE__": selection_table,
+        "__NATIONAL_METRICS_TABLE__": national_metrics_table,
+        "__SENSITIVITY_TABLE__": sensitivity_table,
+        "__JOSE_TABLE__": jose_table,
+        "__NATIONAL_TREND_IMAGE__": image_data("england_waiting_list_1987_2025.png"),
+        "__REGIONAL_TREND_IMAGE__": image_data("regional_waiting_list_trends.png"),
+        "__REGION_DATA_JSON__": json.dumps([row["area_code"] for row in regional_selections]),
+    }
+    for marker, value in replacements.items():
+        html_out = html_out.replace(marker, value)
+    if "__" in html_out:
+        raise AssertionError("An unreplaced report template marker remains")
+    REPORT_PATH.write_text(html_out, encoding="utf-8")
+    print(f"Wrote {REPORT_PATH.relative_to(REPO_ROOT)} ({len(html_out):,} bytes)")
 
 
-PAGE_TEMPLATE = """<!doctype html>
-<title>Hailie Waiting List Report</title>
-<style>
-{css}
-</style>
+TEMPLATE = r'''<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HAILIE social housing waiting-list forecast — final report</title>
+  <style>
+    :root{--navy:#17324d;--blue:#245b78;--teal:#19706f;--ink:#16232e;--muted:#4f5f6c;--line:#ccd6dc;--soft:#edf3f5;--paper:#fff;--warn:#7a4b00;--warn-bg:#fff4d8;--ok:#155b3b;--ok-bg:#e5f4ec}
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:#f3f6f7;color:var(--ink);font:16px/1.58 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    a{color:#005a85;text-decoration-thickness:.1em;text-underline-offset:.15em} a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #f2a900;outline-offset:3px}
+    .skip{position:absolute;left:-9999px;top:0}.skip:focus{left:1rem;top:1rem;background:#fff;padding:.7rem;z-index:10}
+    .page{max-width:1080px;margin:auto;background:var(--paper);min-height:100vh;box-shadow:0 0 30px #21313c1a}.hero{padding:3.5rem clamp(1.2rem,5vw,4rem);background:var(--navy);color:#fff}.hero *{color:#fff}.eyebrow{text-transform:uppercase;letter-spacing:.09em;font-weight:700;font-size:.82rem}.hero h1{font-size:clamp(2rem,5vw,3.6rem);line-height:1.06;max-width:17ch;margin:.4rem 0 1rem}.hero .lead{max-width:70ch;font-size:1.15rem}.meta{opacity:.86;font-size:.9rem}
+    nav{padding:1rem clamp(1.2rem,5vw,4rem);border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:2}nav ul{display:flex;gap:1rem 1.4rem;flex-wrap:wrap;list-style:none;margin:0;padding:0}nav a{font-weight:650;text-decoration:none}
+    main{padding:0 clamp(1.2rem,5vw,4rem) 4rem}section{scroll-margin-top:5rem;margin:3.2rem 0}h2{font-size:1.75rem;line-height:1.2;color:var(--navy);border-bottom:2px solid var(--line);padding-bottom:.55rem}h3{color:var(--navy)}p,li{max-width:76ch}.question{font-size:1.28rem;font-weight:650;color:var(--navy)}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin:1.4rem 0}.card{border:1px solid var(--line);border-radius:.55rem;padding:1.1rem;background:var(--soft)}.value{display:block;font-size:1.65rem;font-weight:750;color:var(--navy)}.label{font-size:.9rem;color:var(--muted)}
+    .answer{border-left:5px solid var(--teal);background:#eaf6f5;padding:1.1rem 1.3rem}.caution{border-left:5px solid #bd7a00;background:var(--warn-bg);padding:1rem 1.2rem}.small{font-size:.91rem;color:var(--muted)}
+    .table-wrap{overflow:auto;margin:1.3rem 0}table{width:100%;border-collapse:collapse;font-size:.92rem}caption{text-align:left;font-weight:700;color:var(--navy);margin-bottom:.55rem}th,td{padding:.65rem .7rem;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}th:first-child,td:first-child{text-align:left}thead th{background:var(--navy);color:#fff;white-space:nowrap}tbody th{color:var(--navy)}tbody tr:nth-child(even){background:#f7f9fa}
+    figure{margin:1.5rem 0;border:1px solid var(--line);padding:1rem;border-radius:.5rem}figure img{width:100%;height:auto;display:block}figcaption{font-size:.92rem;color:var(--muted);margin-top:.7rem}
+    label{font-weight:700;display:block;margin:.8rem 0 .35rem}select{font:inherit;min-height:44px;max-width:100%;padding:.55rem .7rem;border:2px solid var(--blue);border-radius:.35rem;background:#fff;color:var(--ink)}.region-panel{border:1px solid var(--line);border-radius:.5rem;padding:1rem 1.2rem;margin-top:1rem}
+    details{border:1px solid var(--line);border-radius:.45rem;margin:.8rem 0;padding:.8rem 1rem}summary{font-weight:700;color:var(--navy);cursor:pointer}.status{font-weight:700;white-space:nowrap}.closed{color:var(--ok)}.scoped,.limitation{color:var(--warn)}code{background:var(--soft);padding:.1rem .3rem;border-radius:.2rem}.decision-list li{margin:.75rem 0}.footer{padding:1.5rem clamp(1.2rem,5vw,4rem);background:var(--navy);color:#fff}.footer p{color:#fff}
+    @media(max-width:650px){nav{position:static}.hero{padding-top:2.2rem}th,td{padding:.55rem;font-size:.84rem}}
+    @media print{body{background:#fff;font-size:10.5pt}.page{box-shadow:none;max-width:none}nav,.skip,.region-picker{display:none}.hero{padding:1.5rem;background:#fff;color:#000;border-bottom:3px solid #17324d}.hero *{color:#000}.region-panel[hidden]{display:block}.region-panel{break-inside:avoid}section{margin:1.5rem 0}details{display:block}details>summary{display:none}.table-wrap{overflow:visible}a{color:#000;text-decoration:none}}
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
 <div class="page">
-
-  <header class="masthead">
-    <p class="eyebrow">Hailie &middot; England housing waiting lists</p>
-    <h1>Households on the housing register: trends and forecasts, 1987&ndash;2025</h1>
-    <p class="dek">
-      A consolidated analysis of MHCLG Live Table 600 &mdash; the national and regional trend,
-      a leakage-free rolling-origin backtest of seven forecasting models, and what they do
-      (and don't) tell us about 2026&ndash;2030.
-    </p>
-    <p class="meta">
-      Source: MHCLG Live Table 600, retrieved 7 Aug 2026 &middot; Report generated {generated_date}
-    </p>
-  </header>
-
-  <nav class="toc" aria-label="Contents">
-    <ol>
-      <li><a href="#summary">Executive summary</a></li>
-      <li><a href="#trend">1. The national and regional trend</a></li>
-      <li><a href="#method">2. Forecasting method</a></li>
-      <li><a href="#results">3. Backtest results</a></li>
-      <li><a href="#regional-results">4. Regional results</a></li>
-      <li><a href="#forward">5. Illustrative 2026&ndash;2030 forecast</a></li>
-      <li><a href="#regional-forward">6. Regional 2026&ndash;2030 forecast</a></li>
-      <li><a href="#limitations">7. Limitations</a></li>
-      <li><a href="#reproduce">8. Reproducing this work</a></li>
-    </ol>
-  </nav>
-
-  <section id="summary" class="callout">
-    <h2>Executive summary</h2>
-    <div class="stat-grid">
-      <div class="stat">
-        <span class="stat-value">{v2025}</span>
-        <span class="stat-label">households on the register, 2025</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{change_20_25_pct}</span>
-        <span class="stat-label">change since 2020 ({v2020} &rarr; {v2025})</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{best_1y_model}</span>
-        <span class="stat-label">best 1-year model &middot; {best_1y_mape} MAPE</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{best_5y_model}</span>
-        <span class="stat-label">best 5-year model &middot; {best_5y_mape} MAPE</span>
-      </div>
-    </div>
-    <p>
-      The England total is <strong>not a trend</strong> &mdash; it traces two full cycles since 1987,
-      falling to a trough of {trough_value} in {trough_year}, rising to a peak of {peak_value} in {peak_year},
-      falling again to a shallower trough around 2018, and rising since 2020 to {v2025} in 2025.
-      Seven benchmark forecasting models were compared with leakage-free rolling-origin backtesting.
-      <strong>No single model wins at every horizon:</strong> a damped-trend exponential smoother
-      (<code>ets_damped</code>) is most accurate one to two years out, but the simplest possible
-      model &mdash; carry the last value forward (<code>naive</code>) &mdash; is hardest to beat
-      from three years out onward, because every trend-following model eventually overshoots when
-      the cycle turns.
-    </p>
-  </section>
-
-  <section id="trend">
-    <h2>1. The national and regional trend</h2>
-    <p>
-      England's housing register total is not monotonic. Over 1988&ndash;2025 (38 year-on-year changes),
-      21 years saw an increase and 17 a decrease &mdash; the largest single-year rise was +16.1% (2003)
-      and the largest fall was &minus;18.8% (2014). Register counts can move for administrative reasons
-      (periodic list &ldquo;cleanses&rdquo;) as well as genuine change in housing need; this report does
-      not attempt to separate the two (see <a href="#limitations">Limitations</a>).
-    </p>
-    {img_trend}
-    {img_pctchange}
-    <h3>Regional picture</h3>
-    <p>
-      The nine English regions sum exactly to the England total. They do not move uniformly &mdash;
-      London and the South West show the largest proportional rise since 1987, while the North East
-      and East Midlands show the largest falls &mdash; but every region traces the same broad
-      rise-peak-fall-rise shape as the national series (see chart).
-    </p>
-    {img_regional}
-    {regional_snapshot_table}
-  </section>
-
-  <section id="method">
-    <h2>2. Forecasting method</h2>
-    <p>
-      Seven models were compared, all evaluated identically with <strong>rolling-origin
-      (walk-forward) backtesting</strong>: at each origin year from 1996 to 2024, every model is
-      trained only on data up to and including that year (an expanding window), then forecast
-      1/2/3/5 years ahead; the forecast is compared against the actual value once it becomes
-      available. No model ever sees data from after its origin year &mdash; this is checked
-      structurally in code, not just asserted in prose.
-    </p>
-    <table class="data-table method-table">
-      <thead><tr><th>Model</th><th>Idea</th><th>Dependency</th></tr></thead>
-      <tbody>
-        <tr><td class="model-name">Naive</td><td>Last observed value, held flat</td><td>None</td></tr>
-        <tr><td class="model-name">Drift</td><td>Last value + average historical slope &times; horizon</td><td>None</td></tr>
-        <tr><td class="model-name">Linear trend</td><td>OLS straight-line fit, extrapolated</td><td>None</td></tr>
-        <tr><td class="model-name">SES</td><td>Exponentially-weighted level (no trend), &alpha; grid-searched</td><td>None</td></tr>
-        <tr><td class="model-name">Holt's linear</td><td>Exponentially-weighted level + trend, &alpha;/&beta; grid-searched</td><td>None</td></tr>
-        <tr><td class="model-name">ETS damped trend</td><td>Holt's method with the trend damped toward flat over the horizon</td><td>statsmodels</td></tr>
-        <tr><td class="model-name">ARIMA</td><td>Order (p,d,q) chosen per origin by AIC, restricted to well-conditioned fits</td><td>statsmodels</td></tr>
-      </tbody>
-    </table>
-    <p class="note">
-      <strong>A real bug was found and fixed during this work:</strong> an early, unconstrained
-      version of the ARIMA order search picked a numerically degenerate model at one origin &mdash;
-      its AR and MA roots sat exactly on the unit circle, producing a forecast of precisely
-      <strong>0.0 households</strong>. The fix rejects any candidate order whose roots come within
-      1.05 of the unit circle. Full diagnosis: <code>docs/statistical_models_methodology.md</code> &sect;2.
-    </p>
-  </section>
-
-  <section id="results">
-    <h2>3. National backtest results</h2>
-    <p>Mean absolute percentage error (MAPE), lower is better, best model per horizon highlighted:</p>
-    {national_results_table}
-    {img_backtest_chart}
-    {img_mape_chart}
-    <p>
-      <strong>ETS damped trend is the strongest model at 1- and 2-year horizons</strong> &mdash; it
-      damps Holt's trend term just enough to avoid most of the overshoot that makes the undamped
-      Holt model swing wildly around turning points, while still tracking the post-2020 upturn
-      faster than the flat models. From the 3-year horizon on, though, the simplest model in the
-      comparison &mdash; naive &mdash; is hardest to beat (with SES close behind it), because
-      <em>every</em> trend-aware model eventually extrapolates through a cycle turn and pays for
-      it, and that catches up with even the damped version by 3 years out. Linear trend is the
-      weakest model at every horizon by a wide margin, for the same reason: it cannot represent
-      a series that rises, falls, rises, falls.
-    </p>
-  </section>
-
-  <section id="regional-results">
-    <h2>4. Regional results</h2>
-    <p>
-      The same seven-model comparison was run separately for each of the nine English regions.
-      Two findings stand out. First, every region is <em>harder</em> to forecast than the smoother
-      national total (higher MAPE at every horizon) &mdash; aggregation cancels out some of each
-      region's own noise. Second, the best model varies by region as well as by horizon:
-    </p>
-    {regional_best_model_table}
-    {img_regional_heatmap}
-    {img_regional_wins}
-    <p class="note">
-      <strong>Caution:</strong> most of naive's apparent wins above are decided by under 0.1 MAPE
-      points against SES &mdash; effectively a tie, not a real difference (full analysis:
-      <code>docs/regional_forecast_methodology.md</code> &sect;2.4). Read the win counts as
-      &ldquo;naive/SES/ETS-damped are all competitive here,&rdquo; not as one model dominating.
-    </p>
-  </section>
-
-  <section id="forward">
-    <h2>5. Illustrative 2026&ndash;2030 forecast</h2>
-    <p>
-      Each of the seven models was fit on the <strong>full</strong> 1987&ndash;2025 series and
-      extrapolated forward. This is <strong>not a validated prediction</strong> &mdash; it has not
-      itself been backtested, only the methodology that produced it has. Given the backtested MAPEs
-      above (roughly 4&ndash;5% at 1 year, rising to 22&ndash;34% at 5 years depending on model),
-      every row below should be read as a wide-uncertainty benchmark, not a point estimate to plan
-      against. The highlighted cell in each column is the model with the lowest backtested MAPE at
-      that horizon (Section 3) &mdash; so the forecast emphasised here is the one the evaluation
-      actually supports, not a separately-chosen model. 2029 has no highlighted cell: it sits at a
-      4-year horizon, and the backtest only evaluates 1/2/3/5-year horizons, so there is no
-      evaluation result to select from at that year.
-    </p>
-    {forward_forecast_table}
-  </section>
-
-  <section id="regional-forward">
-    <h2>6. Regional 2026&ndash;2030 forecast</h2>
-    <p>
-      The same seven-model comparison and forward-forecast approach (Section 5) was repeated
-      independently for each region, fit on that region's own 1987&ndash;2025 series. Two views
-      are shown together because neither alone tells the full story: the <strong>selected</strong>
-      point forecast (the model with the lowest backtested MAPE for that region at the 5-year
-      horizon) and the <strong>range</strong> across the other competitive models (linear trend
-      excluded &mdash; it is the weakest model everywhere, see Section 3), which shows how much
-      models disagree even where the backtest doesn't clearly prefer a trend-aware alternative to
-      a flat one.
-    </p>
-    <p>
-      <strong>The selected 5-year forecast is flat for 8 of the 9 regions.</strong> Naive (last
-      observed value, held constant) wins the backtest almost everywhere at this horizon,
-      consistent with the national and regional backtest findings above. Read literally, this
-      says &ldquo;expect little change by 2030&rdquo; in most regions. That is an honest summary
-      of what the backtest supports &mdash; but on its own it understates how much the underlying
-      models actually disagree in some places, which the range below makes visible.
-    </p>
-    {img_regional_change}
-    <p>
-      <strong>A consistent growth signal, not (yet) backed by the winning model:</strong> in
-      London, the North West, Yorkshire and The Humber, and the South West, every non-naive/SES
-      model in the comparison points to growth by 2030 (roughly +10% to +16% at the high end)
-      even though naive's flat call still wins the historical backtest in each of them. This is
-      worth flagging to Hailie as a plausible upside case in these four regions, not a confirmed
-      forecast &mdash; the backtest has not shown any trend-aware model to be more accurate than
-      flat here, only that the trend-aware models agree with each other on direction.
-    </p>
-    <p>
-      <strong>West Midlands and East Midlands are the two highest-uncertainty regions.</strong>
-      Both select naive at the 5-year horizon, but the other models disagree sharply with each
-      other as well as with naive: West Midlands ranges from &minus;2.4% to +36.2%, and East
-      Midlands from &minus;17.8% to +1.3%. Neither range should be read as a forecast &mdash; it
-      is a signal that no model has been shown reliable enough in these two regions to trust a
-      single number in either direction, and any planning conversation involving them should
-      treat the outlook as genuinely open.
-    </p>
-    {img_regional_trajectories}
-    <p class="note">
-      <strong>Caveat:</strong> like Section 5, none of this is a validated prediction. It is an
-      extrapolation from a model comparison that has itself been backtested, not a backtest of
-      these specific 2026&ndash;2030 numbers. Full region-by-region detail:
-      <code>outputs/regional_forecast_selected_2026_2030.csv</code> and
-      <code>outputs/regional_forecast_change_2025_2030.csv</code>; methodology and results:
-      <code>docs/statistical_models_methodology.md</code> &sect;5.
-    </p>
-  </section>
-
-  <section id="limitations">
-    <h2>7. Limitations</h2>
-    <ul class="limitations-list">
-      <li><strong>Not a complete measure of housing need.</strong> Live Table 600 counts households
-        on local authorities' own housing registers only; it excludes housing-association-run
-        registers where these are separate from the council list, so the true scale of social
-        housing demand is understated to a degree that varies by area.</li>
-      <li><strong>Administrative &ldquo;cleanse&rdquo; effects are not separated from genuine
-        demand change.</strong> Councils periodically review and remove applicants from their
-        registers; a fall in the reported count can reflect this rather than reduced need. This
-        data alone cannot distinguish the two.</li>
-      <li><strong>No exogenous drivers.</strong> Every model here uses only the series' own
-        history &mdash; none accounts for policy changes, local housing supply, or economic
-        conditions that plausibly drive some of the swings shown above.</li>
-      <li><strong>Small, overlapping backtest samples at longer horizons.</strong> The 5-year
-        backtest has 25 origins nationally, and the same 25 origins independently in each of the
-        9 regions &mdash; but consecutive origins share almost all of their training data, so
-        these are not 25 independent trials &mdash; treat horizon-level MAPE as indicative of
-        relative model performance, not a precise confidence interval.</li>
-      <li><strong>Local-authority-level forecasting was not attempted.</strong> Unlike the clean
-        regional data used here, the local-authority extract mixes pre- and post-reorganisation
-        authority codes (boundary changes through 2019&ndash;2023) that would need reconciling
-        first &mdash; documented but not resolved in <code>docs/initial_feasibility_note.md</code>
-        &sect;2.</li>
-      <li><strong>ARIMA's automatic order search can still produce implausible long-horizon
-        forecasts</strong> even after the unit-root fix above &mdash; including one negative
-        forecast at a training window ending near a sharp trend change. These were reported, not
-        clipped or hidden; see <code>docs/statistical_models_methodology.md</code> &sect;6.</li>
-    </ul>
-  </section>
-
-  <section id="reproduce">
-    <h2>8. Reproducing this work</h2>
-    <p>
-      Every number and chart in this report is generated by a script, in order, from the raw
-      MHCLG source file. Nothing is hand-edited or estimated by eye.
-    </p>
-    <pre class="code-block">python3 scripts/prepare_data.py         # raw extracts &rarr; processed long-format CSVs
-python3 scripts/validate_national.py    # England-total figures vs. raw extract
-.venv/bin/python3 scripts/explore_national.py    # EDA charts and headline stats
-.venv/bin/python3 scripts/forecast_national.py   # national backtest, 5 base models
-.venv/bin/python3 scripts/forecast_regional.py   # regional backtest, 5 base models
-.venv/bin/python3 scripts/forecast_statistical.py  # + ets_damped, arima (national &amp; regional)
-python3 scripts/build_report.py         # this report</pre>
-    <p>
-      Full technical detail, QA checks, and the complete decision log for every choice above
-      (why an expanding window, why <code>MIN_TRAIN_YEARS=10</code>, why these four horizons) live
-      in <code>docs/national_forecast_methodology.md</code>, <code>docs/regional_forecast_methodology.md</code>,
-      and <code>docs/statistical_models_methodology.md</code>.
-    </p>
-  </section>
-
-  <footer class="page-footer">
-    <p>Hailie waiting-list forecast &middot; generated {generated_iso} &middot; source data: MHCLG Live Table 600</p>
-  </footer>
-
+<header class="hero">
+  <p class="eyebrow">HAILIE · Final analytical submission</p>
+  <h1>England social housing waiting-list forecast</h1>
+  <p class="lead">A decision-focused forecast for 2026–2028, a cautious extension to 2030, and the full evidence behind the data, model selection and uncertainty.</p>
+  <p class="meta">Source: MHCLG Live Table 600 · Observations: 1987–2025 · Final report generated __GENERATED_DATE__</p>
+</header>
+<nav aria-label="Report sections"><ul><li><a href="#answer">Answer</a></li><li><a href="#regions">Regions</a></li><li><a href="#data">Data</a></li><li><a href="#models">Models</a></li><li><a href="#jose">José closure</a></li><li><a href="#reproduce">Reproduce</a></li></ul></nav>
+<main id="main">
+<section id="answer">
+  <h2>1. Executive answer</h2>
+  <p class="question">What is the likely direction of social housing waiting lists in England and its regions over the next three to five years, and how uncertain is that outlook?</p>
+  <div class="answer"><strong>The final national model suggests a modest near-term increase, not a sharp change.</strong> England rises from __LATEST__ observed households in 2025 to __FORECAST_2028__ in 2028 (__CHANGE_2028__). The 2028 80% empirical interval is __PI80_2028__, so materially lower and higher outcomes remain plausible.</div>
+  <div class="cards"><div class="card"><span class="value">__LATEST__</span><span class="label">Observed in 2025</span></div><div class="card"><span class="value">__FORECAST_2028__</span><span class="label">Primary forecast for 2028</span></div><div class="card"><span class="value">__CHANGE_2028__</span><span class="label">Forecast change, 2025–2028</span></div><div class="card"><span class="value">Damped Holt</span><span class="label">Selected using mean Y1–Y3 MAE</span></div></div>
+  __NATIONAL_TABLE__
+  <p class="caution"><strong>Interpretation:</strong> the point forecast is a central estimate, not a target or guarantee. The widening intervals are a result: historical forecasting errors increase with horizon. Administrative changes, policy and future economic conditions may create uncertainty beyond these model-error intervals.</p>
+  <figure><img src="data:image/png;base64,__NATIONAL_TREND_IMAGE__" alt=""><figcaption><strong>Historical context.</strong> England’s series is cyclical rather than a stable upward trend: it fell through the 1990s, rose to a 2012 peak, fell again, and has increased since 2020. This is why extrapolating a straight trend performed poorly.</figcaption></figure>
+</section>
+<section id="regions">
+  <h2>2. Regional outlook</h2>
+  <p>The nine regions were modelled independently after the national pipeline was finalised. Different models can therefore be selected where regional backtests provide different evidence. Regional forecasts are not forced to sum to the separately modelled England forecast.</p>
+  __REGIONAL_COMPARISON__
+  <div class="region-picker"><label for="region-select">Inspect one region</label><select id="region-select"><option value="">Choose a region</option>__REGION_OPTIONS__</select></div>
+  <div id="region-details" aria-live="polite">__REGION_PANELS__</div>
+  <figure><img src="data:image/png;base64,__REGIONAL_TREND_IMAGE__" alt=""><figcaption><strong>Historical regional context.</strong> All regions share the broad national cycle, but their levels and volatility differ. The final region selector and table therefore show each region’s own selected model and uncertainty rather than applying one national model everywhere.</figcaption></figure>
+</section>
+<section id="data"><h2>3. Data provenance and quality</h2>
+  <p>The source is MHCLG Live Table 600, retained in the repository. The reproducible preparation pipeline creates a long-format dataset covering England and nine regions for 1987–2025. The nine regional totals reconcile exactly to England in every one of the 39 years.</p>
+  <ul><li>390 regional records and 14,664 local-authority records were checked.</li><li>MHCLG supplied 45 replacement values; 1,421 <code>[z]</code> markers, 2 <code>[x]</code> markers and 8 genuine zeroes were audited.</li><li>This project introduced no new numerical imputations.</li><li>Six London periods were independently checked against LG Inform; all six matched after year-label alignment.</li></ul>
+  <p class="caution"><strong>What the measure means:</strong> Table 600 counts households on local-authority housing registers. These registers are the available administrative measure of social housing waiting-list demand, but they do not include every separate housing-association waiting list and are not a complete measure of housing need. Changes can reflect register administration as well as changes in demand.</p>
+</section>
+<section id="models"><h2>4. Forecasting choices and evidence</h2>
+  <p>Seven transparent candidates were evaluated: naive, drift, linear trend, simple exponential smoothing, Holt linear trend, damped Holt trend and a deliberately restricted ARIMA search. Annual data have no within-year seasonal frequency, so seasonal models were not used.</p>
+  <p><strong>Evaluation:</strong> expanding-window rolling-origin backtesting. The first origin is 1996 after ten observations. There are 29 one-year, 28 two-year, 27 three-year and 25 five-year forecast origins. At each origin the model sees only data available at that time.</p>
+  <p><strong>Selection:</strong> MAE is primary because it reports typical error directly in households. RMSE, MAPE and bias are supporting diagnostics. The primary model minimises mean Y1–Y3 MAE; the extension uses Y5 MAE, with the simpler model preferred where performance is effectively tied.</p>
+  __NATIONAL_METRICS_TABLE__
+  __SELECTION_TABLE__
+  <h3>Why the three- and five-year forecasts differ</h3><p>Damped Holt is most consistent across Y1–Y3, while naive is hardest to beat at Y5. This is a horizon-specific decision rather than a contradiction:</p>
+  __OVERLAP_TABLE__
+  <p>The overlapping difference remains small relative to forecast uncertainty. The five-year extension is therefore retained as a cautious planning benchmark:</p>
+  __EXTENSION_TABLE__
+  <h3>History-window sensitivity</h3><p>The comparison was repeated after excluding the earliest observations. The primary winner changes from damped Holt on the pre-specified full history to naive from 1998 and ARIMA from 2005; the five-year naive winner is stable. MAE levels are not directly comparable because the later windows contain fewer and different forecast origins. The changing near-term winner reinforces the decision to present a modest direction signal with wide uncertainty rather than treat one model name as permanent.</p>
+  __SENSITIVITY_TABLE__
+  <details><summary>Decision record</summary><ol class="decision-list"><li><strong>Use published England and complete regional aggregates:</strong> chosen for continuity and validation; local-authority forecasts were excluded because changing boundaries were not reconciled into continuous current-geography series.</li><li><strong>Use annual univariate benchmarks:</strong> they match the frequency and sample size. Table 602, deprivation, unemployment and other predictors were not added without a leakage-safe alignment and demonstrated out-of-sample gain.</li><li><strong>Use rolling-origin evaluation:</strong> a single holdout would provide too little evidence from 39 annual observations.</li><li><strong>Use MAE as primary:</strong> it is understandable in household units and less dominated by a few large errors than RMSE.</li><li><strong>Use empirical intervals:</strong> they reflect errors actually observed out of sample and avoid overstating parametric certainty.</li><li><strong>Keep the report executive-first:</strong> headline direction and uncertainty appear before technical detail, while the evidence remains in the same auditable artifact.</li></ol></details>
+</section>
+<section id="limitations"><h2>5. Limitations</h2><ul><li>Counts reflect register rules and administrative cleanses as well as housing need.</li><li>The models contain no policy, supply, labour-market or macroeconomic predictors.</li><li>Annual sample sizes are small; longer-horizon rolling origins overlap and are not independent trials.</li><li>Prediction intervals describe historical model error, not every uncertainty in source reporting or future structural change.</li><li>The history-window sensitivity check changes the near-term winning model. It is a robustness diagnostic, not a formal causal analysis of individual policy breaks.</li><li>Regional forecasts are independently modelled and are not constrained to reconcile to the national point forecast.</li></ul></section>
+<section id="jose"><h2>6. José’s concerns: closure and remaining limits</h2><p>This table distinguishes completed evidence from deliberate exclusions and unresolved limitations. “Scoped out” does not mean the issue is unimportant; it records why it was not represented as completed work.</p>__JOSE_TABLE__</section>
+<section id="design"><h2>7. Report design and review approach</h2><p>The report applies Tom Stephenson’s advice by starting with one real user question, keeping the first screen focused, supporting decision-maker, regional and technical-review scenarios, and moving dense evidence below the answer. It uses semantic headings, keyboard-operable controls, visible focus, text labels that do not depend on colour, scoped tables, text summaries for charts, responsive layout and print styling.</p><p>External testing by Tom or Myles is not claimed as completed. Their review can be recorded after this first complete version is shared; the analytical submission does not depend on unperformed testing.</p></section>
+<section id="reproduce"><h2>8. Reproducing the submission</h2><p>Run from the repository root using Python 3.9 or later:</p><pre><code>python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+python3 scripts/audit_table_600.py
+python3 scripts/prepare_data.py
+python3 scripts/validate_national.py
+.venv/bin/python scripts/generate_final_outputs.py
+python3 scripts/build_report.py
+python3 scripts/validate_final_submission.py</code></pre><p>The authoritative machine-readable outputs are under <code>outputs/final/</code>. Earlier exploratory scripts, results and reports are retained only under <code>archive/forecasting_phase/</code>.</p></section>
+</main>
+<footer class="footer"><p>HAILIE social housing waiting-list forecast · final analytical submission · generated __GENERATED_DATE__</p></footer>
 </div>
-"""
-
-
-CSS = """
-:root {
-  --surface: #fcfcfb;
-  --page-plane: #f9f9f7;
-  --ink-primary: #17140f;
-  --ink-secondary: #55503f;
-  --ink-muted: #8a8471;
-  --border: #e3ddc9;
-  --accent: #2a6b52;
-  --accent-soft: #e7efe6;
-  --warm: #a4462a;
-  --warm-soft: #f6e9e2;
-  --card-surface: #fcfcfb;
-  --card-border: #d8d2bc;
-  --best-cell: #d9ead9;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --surface: #17140f;
-    --page-plane: #0f0d0a;
-    --ink-primary: #f6f3ea;
-    --ink-secondary: #c9c2a9;
-    --ink-muted: #948d76;
-    --border: #3a3527;
-    --accent: #7fbfa0;
-    --accent-soft: #1f2b23;
-    --warm: #e08a63;
-    --warm-soft: #2c1f18;
-    --card-surface: #fcfcfb;
-    --card-border: #d8d2bc;
-    --best-cell: #274a2f;
-  }
-}
-:root[data-theme="dark"] {
-  --surface: #17140f;
-  --page-plane: #0f0d0a;
-  --ink-primary: #f6f3ea;
-  --ink-secondary: #c9c2a9;
-  --ink-muted: #948d76;
-  --border: #3a3527;
-  --accent: #7fbfa0;
-  --accent-soft: #1f2b23;
-  --warm: #e08a63;
-  --warm-soft: #2c1f18;
-  --card-surface: #fcfcfb;
-  --card-border: #d8d2bc;
-  --best-cell: #274a2f;
-}
-
-* { box-sizing: border-box; }
-html { color-scheme: light dark; }
-body {
-  margin: 0;
-  background: var(--page-plane);
-  color: var(--ink-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  line-height: 1.6;
-}
-
-.page {
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem 5rem;
-}
-
-h1, h2, h3 {
-  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "URW Palladio", serif;
-  color: var(--ink-primary);
-  text-wrap: balance;
-  line-height: 1.2;
-}
-
-.masthead { margin-bottom: 2.5rem; }
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.78rem;
-  color: var(--accent);
-  font-weight: 600;
-  margin: 0 0 0.6rem;
-}
-h1 { font-size: 2.05rem; margin: 0 0 1rem; }
-.dek {
-  font-size: 1.08rem;
-  color: var(--ink-secondary);
-  max-width: 62ch;
-  margin: 0 0 1rem;
-}
-.meta { font-size: 0.85rem; color: var(--ink-muted); margin: 0; }
-
-.toc {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1.1rem 1.5rem;
-  margin-bottom: 2.5rem;
-}
-.toc ol { margin: 0; padding-left: 1.2rem; columns: 2; column-gap: 2rem; }
-.toc li { margin-bottom: 0.35rem; font-size: 0.92rem; }
-.toc a { color: var(--ink-secondary); text-decoration: none; }
-.toc a:hover, .toc a:focus-visible { color: var(--accent); text-decoration: underline; }
-
-section { margin: 3rem 0; }
-h2 {
-  font-size: 1.5rem;
-  border-bottom: 2px solid var(--border);
-  padding-bottom: 0.5rem;
-  margin-bottom: 1.2rem;
-}
-h3 { font-size: 1.15rem; margin: 1.5rem 0 0.7rem; }
-p { color: var(--ink-secondary); max-width: 68ch; }
-strong { color: var(--ink-primary); }
-code {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.88em;
-  background: var(--accent-soft);
-  padding: 0.1em 0.4em;
-  border-radius: 4px;
-  color: var(--ink-primary);
-}
-
-.callout {
-  background: var(--accent-soft);
-  border-left: 4px solid var(--accent);
-  border-radius: 4px;
-  padding: 1.6rem 1.8rem 1.4rem;
-}
-.callout h2 { border-bottom: none; margin-bottom: 1rem; padding-bottom: 0; }
-.callout p { max-width: 74ch; color: var(--ink-primary); }
-
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1.2rem;
-  margin-bottom: 1.4rem;
-}
-.stat { display: flex; flex-direction: column; gap: 0.15rem; }
-.stat-value {
-  font-family: Georgia, serif;
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-.stat-label { font-size: 0.82rem; color: var(--ink-secondary); }
-
-.note {
-  background: var(--warm-soft);
-  border-left: 4px solid var(--warm);
-  border-radius: 4px;
-  padding: 0.9rem 1.2rem;
-  font-size: 0.95rem;
-}
-.note strong { color: var(--ink-primary); }
-
-.chart-card {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  background: var(--card-surface);
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  overflow-x: auto;
-}
-.chart-card img { max-width: 100%; height: auto; display: block; border-radius: 4px; }
-.chart-card figcaption {
-  margin-top: 0.6rem;
-  font-size: 0.82rem;
-  color: #6b6656;
-  text-align: left;
-}
-
-.table-wrap { overflow-x: auto; }
-table.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-  margin: 1.2rem 0;
-  overflow-x: auto;
-  display: block;
-}
-table.data-table thead, table.data-table tbody { display: table; width: 100%; table-layout: fixed; }
-table.data-table th {
-  text-align: left;
-  font-weight: 600;
-  color: var(--ink-secondary);
-  border-bottom: 1px solid var(--border);
-  padding: 0.55rem 0.7rem;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-table.data-table td {
-  padding: 0.5rem 0.7rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--ink-secondary);
-}
-table.data-table .model-name { color: var(--ink-primary); font-weight: 600; }
-table.data-table .num { font-variant-numeric: tabular-nums; text-align: right; }
-table.data-table .muted { color: var(--ink-muted); font-weight: 400; }
-table.data-table .best-cell { background: var(--best-cell); color: var(--ink-primary); font-weight: 700; border-radius: 4px; }
-table.data-table tbody tr:last-child td { border-bottom: none; }
-
-.code-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem 1.2rem;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.85rem;
-  overflow-x: auto;
-  color: var(--ink-primary);
-  line-height: 1.7;
-}
-
-.limitations-list { padding-left: 1.2rem; }
-.limitations-list li { margin-bottom: 0.9rem; color: var(--ink-secondary); max-width: 68ch; }
-.limitations-list strong { color: var(--ink-primary); }
-
-.page-footer {
-  margin-top: 4rem;
-  padding-top: 1.2rem;
-  border-top: 1px solid var(--border);
-  font-size: 0.8rem;
-  color: var(--ink-muted);
-}
-
-@media (max-width: 600px) {
-  .toc ol { columns: 1; }
-  .stat-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
-  h1 { font-size: 1.6rem; }
-}
-"""
-
-
-def main():
-    stats = compute_headline_stats()
-    snapshot = regional_2025_snapshot()
-
-    national_extended = load_csv_rows(OUTPUTS_DIR / "model_results_extended.csv")
-    regional_extended = load_csv_rows(OUTPUTS_DIR / "regional_model_results_extended.csv")
-    forward_rows = load_csv_rows(OUTPUTS_DIR / "national_forecast_2026_2030_extended.csv")
-
-    best = best_per_horizon(national_extended)
-    best_1y, best_5y = best[1], best[5]
-
-    images = {name.replace(".png", ""): encode_image(name) for name, _ in IMAGES}
-    img_lookup = dict(IMAGES)
-
-    def img(name):
-        key = name.replace(".png", "")
-        return image_block(name, img_lookup[name], images[key])
-
-    now = datetime.now(timezone.utc)
-
-    html_out = PAGE_TEMPLATE.format(
-        css=CSS,
-        generated_date=date.today().strftime("%-d %B %Y"),
-        generated_iso=now.strftime("%Y-%m-%d"),
-        v2025=fmt(stats["v2025"]),
-        v2020=fmt(stats["v2020"]),
-        change_20_25_pct=fmt_pct(stats["change_20_25_pct"], sign=True),
-        trough_value=fmt(stats["trough_value"]),
-        trough_year=stats["trough_year"],
-        peak_value=fmt(stats["peak_value"]),
-        peak_year=stats["peak_year"],
-        best_1y_model=MODEL_LABELS.get(best_1y["model"], best_1y["model"]),
-        best_1y_mape=f"{float(best_1y['mape_pct']):.2f}%",
-        best_5y_model=MODEL_LABELS.get(best_5y["model"], best_5y["model"]),
-        best_5y_mape=f"{float(best_5y['mape_pct']):.2f}%",
-        img_trend=img("england_waiting_list_1987_2025.png"),
-        img_pctchange=img("england_annual_percentage_change.png"),
-        img_regional=img("regional_waiting_list_trends.png"),
-        regional_snapshot_table=render_regional_snapshot_table(snapshot),
-        national_results_table=render_model_results_table(national_extended),
-        img_backtest_chart=img("backtest_one_step_ahead_extended.png"),
-        img_mape_chart=img("backtest_mape_by_horizon_extended.png"),
-        regional_best_model_table=render_regional_best_model_table(
-            regional_best_model_table(regional_extended, 1), regional_best_model_table(regional_extended, 5)
-        ),
-        img_regional_heatmap=img("regional_backtest_mape_heatmap.png"),
-        img_regional_wins=img("regional_win_counts_extended.png"),
-        forward_forecast_table=render_forward_forecast_table(forward_rows, best=best),
-        img_regional_change=img("regional_forecast_change_2025_2030.png"),
-        img_regional_trajectories=img("regional_forecast_trajectories_2026_2030.png"),
-    )
-
-    out_path = OUTPUTS_DIR / "report.html"
-    out_path.write_text(html_out, encoding="utf-8")
-    print(f"Wrote {out_path.relative_to(REPO_ROOT)} ({len(html_out):,} bytes)")
+<script>
+  const regionCodes = __REGION_DATA_JSON__;
+  const select = document.getElementById('region-select');
+  select.addEventListener('change', () => {
+    regionCodes.forEach(code => { document.getElementById('region-' + code).hidden = code !== select.value; });
+  });
+</script>
+</body></html>'''
 
 
 if __name__ == "__main__":

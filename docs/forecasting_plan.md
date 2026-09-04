@@ -1,5 +1,9 @@
 # National Forecasting Plan
 
+> **Plan completed.** This document preserves the pre-modelling specification.
+> The final implementation and results are recorded in
+> `docs/final_forecast_methodology.md` and `outputs/final/`.
+
 ## Purpose
 
 This note sets out the current forecasting approach agreed in principle for the next stage of the project.

@@ -1,0 +1,10 @@
+region,area_code,primary_model,primary_model_label,mean_y1_y3_mae_households,extension_model,extension_model_label,y5_mae_households
+East Midlands,E12000004,arima,ARIMA,9387.692656,naive,Naive,20725.640000
+East of England,E12000006,naive,Naive,11527.820668,naive,Naive,25642.400000
+London,E12000007,naive,Naive,31571.447090,naive,Naive,75735.880000
+North East,E12000001,naive,Naive,10851.975552,arima,ARIMA,18403.291919
+North West,E12000002,naive,Naive,19713.639208,naive,Naive,38289.400000
+South East,E12000008,damped_trend,Damped Holt trend,16449.088274,damped_trend,Damped Holt trend,44541.874991
+South West,E12000009,drift,Drift,16872.212392,drift,Drift,36228.554357
+West Midlands,E12000005,naive,Naive,15934.981451,naive,Naive,33142.000000
+Yorkshire and The Humber,E12000003,naive,Naive,23573.464240,naive,Naive,52047.760000

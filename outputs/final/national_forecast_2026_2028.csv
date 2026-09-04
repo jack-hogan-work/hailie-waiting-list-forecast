@@ -1,0 +1,4 @@
+geography,area_code,forecast_year,horizon_years,selected_model,selected_model_label,point_forecast,lower_80,upper_80,lower_95,upper_95
+England,E92000001,2026,1,damped_trend,Damped Holt trend,1348467.000760,1288127.770025,1420407.731962,1168581.588326,1494998.873262
+England,E92000001,2027,2,damped_trend,Damped Holt trend,1354819.001078,1183078.310173,1510443.484300,1013011.696187,1656567.742661
+England,E92000001,2028,3,damped_trend,Damped Holt trend,1359900.601332,1169171.102959,1667851.491075,736751.721465,1857481.972946

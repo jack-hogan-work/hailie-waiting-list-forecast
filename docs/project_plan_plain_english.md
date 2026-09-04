@@ -1,5 +1,11 @@
 # HAILIE Project Plan — Plain English
 
+> **Historical planning record.** This document records the route agreed before
+> the final rebuild. The national and regional modelling, final outputs and
+> report are now complete. Current status and reproduction instructions are in
+> the root `README.md`; final decisions are in
+> `docs/final_forecast_methodology.md`.
+
 ## Where the project is now
 
 We already have working code, cleaned files, charts and exploratory forecasts. We are not throwing that work away. We are pausing the forecast claims while we prove that the source data, definitions and geography are suitable for the question Jose wants answered.

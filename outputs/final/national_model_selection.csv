@@ -1,0 +1,3 @@
+geography,area_code,forecast_role,selected_model,selected_model_label,selection_metric,selection_score_households,selection_note
+England,E92000001,primary_2026_2028,damped_trend,Damped Holt trend,mean_mae_y1_y3,115961.457807,"Lowest mean MAE across the 1-, 2- and 3-year backtests"
+England,E92000001,extension_2026_2030,naive,Naive,mae_y5,306434.960000,Lowest 5-year MAE; parsimonious model used where performance ties

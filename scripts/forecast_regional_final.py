@@ -1,5 +1,6 @@
 import csv
 from pathlib import Path
+import numpy as np
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing, Holt
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -236,15 +237,15 @@ def calculate_metrics(results):
         "Bias": bias,
     }
 def empirical_prediction_interval(results, point_forecast, coverage):
-    errors = sorted(result["error"] for result in results)
+    errors = np.array(
+        [result["error"] for result in results],
+        dtype=float,
+    )
 
     alpha = 1 - coverage
 
-    lower_index = int((alpha / 2) * (len(errors) - 1))
-    upper_index = int((1 - alpha / 2) * (len(errors) - 1))
-
-    lower_error = errors[lower_index]
-    upper_error = errors[upper_index]
+    lower_error = np.quantile(errors, alpha / 2)
+    upper_error = np.quantile(errors, 1 - alpha / 2)
 
     lower_bound = point_forecast - upper_error
     upper_bound = point_forecast - lower_error
@@ -523,44 +524,6 @@ if __name__ == "__main__":
             f"{regions[area_code]['name']} | "
             f"{model_name}"
         )
-    print("\nFINAL REGIONAL FORECASTS:")
-
-    for area_code, region in regions.items():
-        model_3yr_name = selected_3yr_models[area_code]
-        model_5yr_name = selected_5yr_models[area_code]
-
-        model_3yr_function = models[model_3yr_name]
-        model_5yr_function = models[model_5yr_name]
-
-        forecast_3yr = model_3yr_function(
-            region["values"],
-            3,
-        )
-
-        forecast_5yr = model_5yr_function(
-            region["values"],
-            5,
-        )
-
-        print(f"\n{region['name']} ({area_code})")
-
-        for year, value in zip(
-            [2026, 2027, 2028],
-            forecast_3yr,
-        ):
-            print(
-                f"  3-year model {year}: "
-                f"{value:,.0f}"
-            )
-
-        for year, value in zip(
-            [2026, 2027, 2028, 2029, 2030],
-            forecast_5yr,
-        ):
-            print(
-                f"  5-year model {year}: "
-                f"{value:,.0f}"
-            )
     print("\nFINAL REGIONAL FORECASTS:")
 
     for area_code, region in regions.items():

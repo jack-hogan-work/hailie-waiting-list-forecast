@@ -44,8 +44,8 @@ def validate_england_series(years, values):
             f"Expected {len(expected_years)} observations, found {len(values)}"
         )
 
-        if any(value < 0 for value in values):
-            raise ValueError("Negative household values found in England series")
+    if any(value < 0 for value in values):
+        raise ValueError("Negative household values found in England series")
 def get_backtest_origins(years, horizon):
     first_origin = FIRST_YEAR + MIN_TRAIN_YEARS - 1
     last_origin = LAST_YEAR - horizon

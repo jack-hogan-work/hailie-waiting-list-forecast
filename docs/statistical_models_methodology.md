@@ -1,4 +1,10 @@
-# Statistical Model Comparison — Methodology and Results (Week 2 extension)
+# Statistical Model Comparison — Historical Development Record
+
+> **Superseded for final reporting.** Sections 1–6 document the exploratory
+> Week 2 pipeline and are retained to show how the analysis developed. The
+> authoritative final method is `docs/final_forecast_methodology.md`; the final
+> machine-readable results are in `outputs/final/`. Do not use the archived
+> MAPE-selected outputs as the final forecast.
 
 **Scope note:** the session guardrails asked that no third-party package be installed without checking first. The user was asked directly whether to install `statsmodels` for ARIMA/Holt-Winters, extend to local-authority forecasting instead, or stop; they chose to install `statsmodels`. `requirements.txt` has been updated (`statsmodels==0.14.6`, pulling in `scipy`, `pandas`, `patsy` as transitive dependencies) and the package was installed only into the project-local `.venv`.
 
