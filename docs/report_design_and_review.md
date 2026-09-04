@@ -39,6 +39,6 @@ finding, decision and resulting change.
 |---|---|---|---|
 | 4 September 2026 | Internal final QA | Stale report consumed archived MAPE-selected forecasts | Replaced it with a report generated only from final MAE-selected outputs |
 | 4 September 2026 | Internal final QA | Region-level forecast details were difficult to inspect | Added a labelled keyboard-operable region selector and full interval tables |
-| 4 September 2026 | Internal final QA | Supervisor concerns were dispersed across notes | Added one concern-to-evidence closure matrix to the final report |
+| 4 September 2026 | Internal final QA | Supervisor concerns were dispersed across notes | Added one review-and-evidence matrix to the final report |
 | 4 September 2026 | Internal final QA | Sensitivity to historical coverage had been planned but not tested | Added 1998- and 2005-start rolling-origin comparisons and reported the changing near-term winner |
 | 4 September 2026 | Scope check against the original brief and weekly update | A graphic and report headings said "housing" without the intended "social housing" scope | Corrected visible titles and retained the precise caveat that Table 600 measures local-authority registers rather than every social housing waiting list |

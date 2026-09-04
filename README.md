@@ -49,7 +49,7 @@ independently because model performance differs across the nine regions.
 
 | Purpose | Location |
 |---|---|
-| Final report, regional selector and José closure matrix | [`outputs/HAILIE_final_report.html`](outputs/HAILIE_final_report.html) |
+| Final report, regional selector and supervisor review evidence | [`outputs/HAILIE_final_report.html`](outputs/HAILIE_final_report.html) |
 | Canonical forecasting methodology | [`docs/final_forecast_methodology.md`](docs/final_forecast_methodology.md) |
 | Data-quality and provenance evidence | [`docs/data_quality_audit.md`](docs/data_quality_audit.md) |
 | Missing-data and publisher-imputation evidence | [`docs/missing_data_and_imputation.md`](docs/missing_data_and_imputation.md) |

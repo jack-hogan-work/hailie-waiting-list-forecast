@@ -283,8 +283,8 @@ def main() -> None:
         row_headers=True,
     )
 
-    jose_table = table(
-        ["José’s question or concern", "Action and evidence", "Closure"],
+    review_table = table(
+        ["Review question or concern", "Action and evidence", "Status"],
         [
             ["Provenance and processing integrity", "Raw Table 600 is retained; scripted extraction and validation reconcile all nine regions to England for all 39 years.", '<span class="status closed">Closed</span>'],
             ["Meaning of [x], [z], blanks, zeroes and imputations", "Publisher markers were audited: 45 MHCLG replacements, 1,421 [z], 2 [x] and 8 genuine zeroes. No new values were imputed by this project.", '<span class="status closed">Closed</span>'],
@@ -298,7 +298,7 @@ def main() -> None:
             ["Changing local-authority geography", "Local-authority forecasts were excluded because a continuous current-boundary series was not validated. National and nine-region series are used instead.", '<span class="status scoped">Scoped out</span>'],
             ["Sensitivity to history and policy breaks", "The model comparison was repeated from 1998 and 2005. The near-term winner changes, while naive remains the five-year winner. This supports cautious interpretation; a causal policy-break analysis was not attempted.", '<span class="status closed">Tested</span>'],
         ],
-        "Supervisor concern-to-evidence closure matrix",
+        "Supervisor review and evidence matrix",
         row_headers=True,
     )
 
@@ -318,7 +318,7 @@ def main() -> None:
         "__SELECTION_TABLE__": selection_table,
         "__NATIONAL_METRICS_TABLE__": national_metrics_table,
         "__SENSITIVITY_TABLE__": sensitivity_table,
-        "__JOSE_TABLE__": jose_table,
+        "__REVIEW_TABLE__": review_table,
         "__NATIONAL_TREND_IMAGE__": image_data("england_waiting_list_1987_2025.png"),
         "__REGIONAL_TREND_IMAGE__": image_data("regional_waiting_list_trends.png"),
         "__REGION_DATA_JSON__": json.dumps([row["area_code"] for row in regional_selections]),
@@ -364,7 +364,7 @@ TEMPLATE = r'''<!doctype html>
   <p class="lead">A decision-focused forecast for 2026–2028, a cautious extension to 2030, and the full evidence behind the data, model selection and uncertainty.</p>
   <p class="meta">Source: MHCLG Live Table 600 · Observations: 1987–2025 · Final report generated __GENERATED_DATE__</p>
 </header>
-<nav aria-label="Report sections"><ul><li><a href="#answer">Answer</a></li><li><a href="#regions">Regions</a></li><li><a href="#data">Data</a></li><li><a href="#models">Models</a></li><li><a href="#jose">José closure</a></li><li><a href="#reproduce">Reproduce</a></li></ul></nav>
+<nav aria-label="Report sections"><ul><li><a href="#answer">Answer</a></li><li><a href="#regions">Regions</a></li><li><a href="#data">Data</a></li><li><a href="#models">Models</a></li><li><a href="#review">Supervisor review</a></li><li><a href="#reproduce">Reproduce</a></li></ul></nav>
 <main id="main">
 <section id="answer">
   <h2>1. Executive answer</h2>
@@ -403,7 +403,7 @@ TEMPLATE = r'''<!doctype html>
   <details><summary>Decision record</summary><ol class="decision-list"><li><strong>Use published England and complete regional aggregates:</strong> chosen for continuity and validation; local-authority forecasts were excluded because changing boundaries were not reconciled into continuous current-geography series.</li><li><strong>Use annual univariate benchmarks:</strong> they match the frequency and sample size. Table 602, deprivation, unemployment and other predictors were not added without a leakage-safe alignment and demonstrated out-of-sample gain.</li><li><strong>Use rolling-origin evaluation:</strong> a single holdout would provide too little evidence from 39 annual observations.</li><li><strong>Use MAE as primary:</strong> it is understandable in household units and less dominated by a few large errors than RMSE.</li><li><strong>Use empirical intervals:</strong> they reflect errors actually observed out of sample and avoid overstating parametric certainty.</li><li><strong>Keep the report executive-first:</strong> headline direction and uncertainty appear before technical detail, while the evidence remains in the same auditable artifact.</li></ol></details>
 </section>
 <section id="limitations"><h2>5. Limitations</h2><ul><li>Counts reflect register rules and administrative cleanses as well as housing need.</li><li>The models contain no policy, supply, labour-market or macroeconomic predictors.</li><li>Annual sample sizes are small; longer-horizon rolling origins overlap and are not independent trials.</li><li>Prediction intervals describe historical model error, not every uncertainty in source reporting or future structural change.</li><li>The history-window sensitivity check changes the near-term winning model. It is a robustness diagnostic, not a formal causal analysis of individual policy breaks.</li><li>Regional forecasts are independently modelled and are not constrained to reconcile to the national point forecast.</li></ul></section>
-<section id="jose"><h2>6. José’s concerns: closure and remaining limits</h2><p>This table distinguishes completed evidence from deliberate exclusions and unresolved limitations. “Scoped out” does not mean the issue is unimportant; it records why it was not represented as completed work.</p>__JOSE_TABLE__</section>
+<section id="review"><h2>6. Supervisor review and evidence</h2><p>This table distinguishes completed evidence from deliberate exclusions and unresolved limitations. “Scoped out” does not mean the issue is unimportant; it records why it was not represented as completed work.</p>__REVIEW_TABLE__</section>
 <section id="design"><h2>7. Report design and review approach</h2><p>The report applies Tom Stephenson’s advice by starting with one real user question, keeping the first screen focused, supporting decision-maker, regional and technical-review scenarios, and moving dense evidence below the answer. It uses semantic headings, keyboard-operable controls, visible focus, text labels that do not depend on colour, scoped tables, text summaries for charts, responsive layout and print styling.</p><p>External testing by Tom or Myles is not claimed as completed. Their review can be recorded after this first complete version is shared; the analytical submission does not depend on unperformed testing.</p></section>
 <section id="reproduce"><h2>8. Reproducing the submission</h2><p>Run from the repository root using Python 3.9 or later:</p><pre><code>python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt

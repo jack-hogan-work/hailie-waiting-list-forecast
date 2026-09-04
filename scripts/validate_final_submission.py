@@ -116,7 +116,7 @@ def main() -> None:
     for phrase in [
         "Final analytical submission", "England social housing waiting-list forecast",
         "separate housing-association waiting list", "1,359,901", "mean Y1–Y3 MAE",
-        "José’s concerns", "Scoped out", "Sensitivity to history and policy breaks",
+        "Supervisor review and evidence", "Scoped out", "Sensitivity to history and policy breaks",
     ]:
         require(phrase in report, f"Final report is missing: {phrase}")
     require("Illustrative 2026" not in report, "Archived report language remains")

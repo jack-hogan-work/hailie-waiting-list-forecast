@@ -8,7 +8,7 @@
 
 ## Where the project is now
 
-We already have working code, cleaned files, charts and exploratory forecasts. We are not throwing that work away. We are pausing the forecast claims while we prove that the source data, definitions and geography are suitable for the question Jose wants answered.
+We already have working code, cleaned files, charts and exploratory forecasts. We are not throwing that work away. We are pausing the forecast claims while we prove that the source data, definitions and geography are suitable for the supervisor's question.
 
 The first audit now shows that the repository copies Table 600 correctly. It also found an important qualification: MHCLG has already made 45 documented replacements inside the published workbook. The next job is therefore about meaning and comparability, not just whether the code runs.
 
@@ -36,7 +36,7 @@ Table 602 describes the flow of council-owned homes let, not the number of house
 
 ### 6. Agree the actual question and output
 
-Confirm whether Jose needs a national outlook, regional planning ranges, council segmentation, or an explanation of historic change. Choose one primary outcome and audience. Freeze a documented analysis dataset for that purpose.
+Confirm whether the supervisor needs a national outlook, regional planning ranges, council segmentation, or an explanation of historic change. Choose one primary outcome and audience. Freeze a documented analysis dataset for that purpose.
 
 ### 7. Re-test whether forecasting is defensible
 
@@ -51,5 +51,5 @@ Produce a short methods note, a data-quality record, the final charts/tables and
 1. **Completed:** reproduce and document the Table 600 source audit.
 2. **Completed:** scope Table 602, pass the London LG Inform check, and decide how to treat IoD 2025.
 3. **Completed locally:** reset the README and methods documentation so forecasts are explicitly exploratory.
-4. **Next:** confirm the exact output Jose wants and start the current-geography decision log.
-5. **Then:** update the shared status document and send Jose the evidence-based progress note.
+4. **Next:** confirm the exact output the supervisor wants and start the current-geography decision log.
+5. **Then:** update the shared status document and send the evidence-based progress note.

@@ -3,7 +3,7 @@
 > **Final status update — 4 September 2026:** the decision gate below was the
 > checkpoint used before final modelling. Its seven conditions have now been
 > addressed for national and regional analysis, and forecasting has resumed and
-> completed. See `docs/final_forecast_methodology.md` and the José closure table
+> completed. See `docs/final_forecast_methodology.md` and the supervisor review table
 > in `outputs/HAILIE_final_report.html`. Local-authority forecasting remains
 > deliberately excluded because current-boundary continuity was not validated.
 
@@ -43,7 +43,7 @@ This establishes that the repository faithfully reproduces the published table. 
 - The source flags specific comparability issues for Telford and Wrekin and Epping Forest.
 - The 376 historical authority rows map to 296 current LAD24 codes. A current-boundary local series has not yet been constructed or validated.
 
-## Jose's four points
+## Four supervisor review points
 
 | Point | Evidence/status | Decision |
 | --- | --- | --- |
