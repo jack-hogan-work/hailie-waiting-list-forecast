@@ -48,15 +48,41 @@ def build() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     history = read_csv(DATA)
     national = read_csv(FINAL / "national_forecast_2026_2028.csv")
+    sensitivity = read_csv(FINAL / "national_history_sensitivity.csv")
     regional = read_csv(FINAL / "regional_forecast_2026_2028.csv")
+    regional_selections = read_csv(FINAL / "regional_model_selection.csv")
     national_chart = FIGURES / "public_national_forecast.png"
     regional_chart = FIGURES / "public_regional_outlook.png"
     if not national_chart.exists() or not regional_chart.exists():
         raise FileNotFoundError("Run scripts/build_public_charts.py before building the briefing")
-    latest = 1_340_527
+    latest = int(next(row["households_on_register"] for row in history if row["Area code"] == ENGLAND and row["year"] == "2025"))
     row_2028 = next(row for row in national if row["forecast_year"] == "2028")
     forecast_2028 = float(row_2028["point_forecast"])
     change = 100 * (forecast_2028 - latest) / latest
+
+    model_order = ["naive", "drift", "linear_trend", "ses", "holt", "damped_trend", "arima"]
+
+    def later_window(start_year: str) -> dict[str, object]:
+        records = [row for row in sensitivity if row["history_start_year"] == start_year]
+        scores = {
+            model: sum(
+                float(row["mae_households"])
+                for row in records
+                if row["model"] == model and row["horizon_years"] in {"1", "2", "3"}
+            )
+            / 3
+            for model in model_order
+        }
+        ranking = sorted(model_order, key=lambda model: (scores[model], model_order.index(model)))
+        labels = {row["model"]: row["model_label"] for row in records}
+        return {
+            "damped_mae": scores["damped_trend"],
+            "damped_rank": ranking.index("damped_trend") + 1,
+            "naive_mae": scores["naive"],
+            "winner": labels[ranking[0]],
+        }
+
+    later_windows = {year: later_window(year) for year in ["1998", "2005"]}
 
     styles = getSampleStyleSheet()
     title = ParagraphStyle("Title", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=30, leading=32, textColor=NAVY, alignment=TA_LEFT, spaceAfter=8)
@@ -93,31 +119,48 @@ def build() -> None:
 
     story = []
     story += [P("HAILIE PUBLIC BRIEFING", kicker), P("England's social housing<br/>waiting-list outlook", title), P("What published register data suggests for 2026–2028, with a cautious planning view to 2030.", lead), Spacer(1, 5 * mm)]
-    story += [stats([(n(latest), "households on registers in 2025"), (n(forecast_2028), "central forecast for 2028"), (p(change), "forecast change, 2025–2028")]), Spacer(1, 8 * mm)]
-    story += [P("The central outlook", h1), P("England's published social housing register count reached <b>1.34 million households in 2025</b>. The selected model points to a modest increase to about <b>1.36 million in 2028</b>. This is a broadly stable central path rather than evidence of a decisive rise or fall.", lead), P("The uncertainty range is wide. For 2028, the empirical 80% range is approximately <b>1.17 million to 1.67 million</b>. Planning and public discussion should therefore focus on the range of plausible outcomes as well as the central estimate."), Spacer(1, 4 * mm), P("Source: Ministry of Housing, Communities and Local Government Live Table 600. Counts are households on local-authority housing registers at 1 April each year.", small), PageBreak()]
+    story += [stats([(n(latest), "households on registers in 2025"), (n(forecast_2028), "full-history estimate for 2028"), (p(change), "full-history change, 2025–2028")]), Spacer(1, 8 * mm)]
+    story += [P("The central outlook", h1), P("<b>The evidence does not identify a robust national increase or decrease over the next three years.</b> The damped-Holt model selected on the full 1987–2025 history gives a central estimate of <b>1,359,901 households in 2028 (+1.4%)</b>. However, naive performs better in both later-history sensitivity windows, especially 2005–2025.", lead), P("The uncertainty range is wide. For 2028, the empirical 80% range is approximately <b>1.17 million to 1.67 million</b>. Planning and public discussion should therefore focus on the range of plausible outcomes as well as the full-history central estimate."), Spacer(1, 4 * mm), P("Source: Ministry of Housing, Communities and Local Government Live Table 600. Counts are households on local-authority housing registers. The reference date is 1 April up to 2018 and 31 March from 2019 onward. Data retrieved 7 August 2026.", small), PageBreak()]
 
     story += [P("01  HISTORICAL CONTEXT", kicker), P("Waiting lists have moved in long cycles", h1), P("The national series does not follow a simple straight line. It fell through much of the 1990s, rose strongly during the 2000s, peaked in 2012, then declined before increasing again after 2020.", lead), Image(str(national_chart), width=174 * mm, height=79 * mm), Spacer(1, 5 * mm)]
     story += [stats([("1.02m", "1998 series low"), ("1.85m", "2012 series peak"), ("+17.9%", "increase from 2020 to 2025")]), Spacer(1, 5 * mm), P("Why this matters", h2), P("Models that extend a fixed long-run trend can perform poorly when the underlying series has repeated turning points. The final forecast was therefore chosen through rolling historical tests rather than by selecting the model with the most visually compelling trajectory."), PageBreak()]
 
     latest_by_region = {row["Region"]: int(row["households_on_register"]) for row in history if row["year"] == "2025" and row["Area code"].startswith("E12")}
-    forecast_by_region = {row["region"]: float(row["point_forecast"]) for row in regional if row["forecast_year"] == "2028"}
-    regional_rows = [["Region", "2025", "2028 forecast", "Change"]]
-    for name in sorted(forecast_by_region, key=forecast_by_region.get, reverse=True):
-        old, new = latest_by_region[name], forecast_by_region[name]
-        regional_rows.append([name, n(old), n(new), p(100 * (new - old) / old)])
-    story += [P("02  REGIONAL OUTLOOK", kicker), P("A varied picture across England", h1), P("London remains the largest regional register count in the central forecast. Most regions are broadly stable over the three-year horizon, while the South West shows the clearest modelled increase.", lead), Image(str(regional_chart), width=174 * mm, height=91 * mm), Spacer(1, 4 * mm), data_table(regional_rows, [64, 35, 43, 32]), PageBreak()]
+    forecast_by_region = {row["region"]: row for row in regional if row["forecast_year"] == "2028"}
+    model_by_region = {row["region"]: row["primary_model_label"] for row in regional_selections}
+    regional_rows = [["Region", "Selected model", "2025", "2028 central", "2028 80% range"]]
+    for name in sorted(forecast_by_region, key=lambda region: float(forecast_by_region[region]["point_forecast"]), reverse=True):
+        row = forecast_by_region[name]
+        regional_rows.append([
+            name,
+            model_by_region[name],
+            n(latest_by_region[name]),
+            n(row["point_forecast"]),
+            f"{n(row['lower_80'])}–{n(row['upper_80'])}",
+        ])
+    story += [P("02  REGIONAL OUTLOOK", kicker), P("Regional backtests do not support a strong directional call", h1), P("For six of nine regions, backtesting selected a naive model that carries the 2025 observation forward. The repeated 2028 central estimates are therefore properties of the selected models, not evidence that regional waiting lists will remain unchanged. The chart and table pair each central estimate with its 80% range.", lead), Image(str(regional_chart), width=174 * mm, height=91 * mm), Spacer(1, 4 * mm), data_table(regional_rows, [43, 32, 25, 29, 45]), PageBreak()]
 
-    uncertainty_rows = [["Year", "Central estimate", "80% range", "95% range"]]
+    uncertainty_rows = [["Year", "Central estimate", "80% range"]]
     for row in national:
-        uncertainty_rows.append([row["forecast_year"], n(row["point_forecast"]), f"{n(row['lower_80'])}–{n(row['upper_80'])}", f"{n(row['lower_95'])}–{n(row['upper_95'])}"])
-    story += [P("03  UNCERTAINTY", kicker), P("A forecast is a range, not a promise", h1), P("The central estimate summarises the model's expected path. The ranges show how far historical forecast errors have extended when the same method was tested on unseen years.", lead), data_table(uncertainty_rows, [28, 42, 52, 52]), Spacer(1, 8 * mm)]
-    story += [P("What the ranges show", h2), P("Uncertainty widens with time. The 2026 estimate is relatively concentrated, while the 2028 range is much broader. Outcomes near either side of the range would not automatically mean the model had failed; they reflect the volatility seen in the historical record."), P("What they do not show", h2), P("The ranges are based on historical model error. They cannot capture every possible policy change, administrative change or future shock. They should support scenario planning, not be read as exact probabilities for every future event."), Spacer(1, 5 * mm), P("Communication principle", h2), P("Headlines should pair the central estimate with its uncertainty. Reporting only 1.36 million would give a false impression of precision."), PageBreak()]
+        uncertainty_rows.append([row["forecast_year"], n(row["point_forecast"]), f"{n(row['lower_80'])}–{n(row['upper_80'])}"])
+    story += [P("03  UNCERTAINTY", kicker), P("A forecast is a range, not a promise", h1), P("The central estimate summarises the model's expected path. The public 80% range shows how far historical forecast errors have extended when the same method was tested on unseen years.", lead), data_table(uncertainty_rows, [34, 55, 85]), Spacer(1, 7 * mm)]
+    story += [P("What the 80% range shows", h2), P("Uncertainty widens with time. The 2026 estimate is relatively concentrated, while the 2028 range is much broader. Outcomes near either side of the range would not automatically mean the model had failed; they reflect the volatility seen in the historical record."), P("Why a 95% range is not shown", h2), P("Only 27 three-year backtest errors are available. Each 95% tail would therefore depend on roughly one extreme observation, including periods affected by identifiable changes in housing-register policy. Wider 95% figures remain in the technical report as diagnostic historical ranges, not stable probability limits."), P("What the range does not show", h2), P("The range is based on historical model error. It cannot capture every possible policy change, administrative change or future shock. It should support scenario planning, not be read as an exact probability for every future event."), Spacer(1, 4 * mm), P("Communication principle", h2), P("Headlines should pair the central estimate with its uncertainty. Reporting only 1.36 million would give a false impression of precision."), PageBreak()]
 
     story += [P("04  EVIDENCE AND USE", kicker), P("Built for transparent public use", h1), P("The analysis uses a reproducible pipeline from the published source file to the dashboard, forecast tables and briefing. The final national and regional results can be regenerated from the repository.", lead)]
-    evidence = [["Evidence step", "What was done"], ["Source integrity", "The retained Table 600 workbook, extracts and processed series were compared directly."], ["Reconciliation", "The nine regions sum exactly to England in every year from 1987 to 2025."], ["Model testing", "Seven transparent models were evaluated with expanding-window rolling-origin backtesting."], ["Selection", "Mean absolute error was the primary measure because it is interpretable in households."], ["Uncertainty", "80% and 95% empirical ranges were derived from out-of-sample historical errors."]]
-    story += [data_table(evidence, [48, 126]), Spacer(1, 7 * mm), P("How the findings can be used", h2), P("The dashboard supports national and regional comparison, planning conversations and accessible communication of uncertainty. The forecast provides an evidence baseline against which new data and policy developments can be assessed."), P("Measure and interpretation", h2), P("Table 600 counts households on local-authority housing registers. These registers are an important administrative measure of social housing waiting-list demand, but they are not a complete measure of housing need. Changes may reflect register management as well as changes in underlying demand."), Spacer(1, 5 * mm), P("Explore the interactive dashboard and full analytical report in the HAILIE waiting-list forecast repository.", body), P("Data source: MHCLG Live Table 600, retrieved 7 August 2026. Analysis covers 1987–2025; forecasts begin in 2026.", small)]
+    evidence = [["Evidence step", "What was done"], ["Source integrity", "The retained Table 600 workbook, extracts and processed series were compared directly."], ["Reconciliation", "The nine regions sum exactly to England in every year from 1987 to 2025."], ["Model testing", "Seven transparent models were evaluated with expanding-window rolling-origin backtesting. The ARIMA search collapses to the naive random walk and SES converges to alpha≈1 on this series, so those rows are effectively equivalent baselines."], ["Selection", "Mean absolute error was the primary measure because it is interpretable in households. Differences are descriptive; overlapping origins do not support formal claims of significance."], ["Uncertainty", "Public 80% ranges were derived from out-of-sample historical errors; wider 95% diagnostics remain in the technical report."]]
+    sensitivity_rows = [["History window", "Damped-Holt mean MAE", "Rank", "Naive mean MAE", "Winner"]]
+    for start_year in ["1998", "2005"]:
+        result = later_windows[start_year]
+        sensitivity_rows.append([
+            f"{start_year}–2025",
+            n(result["damped_mae"]),
+            f'{result["damped_rank"]} of {len(model_order)}',
+            n(result["naive_mae"]),
+            str(result["winner"]),
+        ])
+    story += [data_table(evidence, [48, 126]), Spacer(1, 5 * mm), P("Later-history sensitivity", h2), P("Naive has lower mean Y1–Y3 MAE than the selected damped-Holt model in both later windows. This weakens the directional conclusion without changing the preserved full-history estimate.", small), data_table(sensitivity_rows, [34, 44, 24, 42, 30]), Spacer(1, 5 * mm), P("How the findings can be used", h2), P("The dashboard supports national and regional comparison, planning conversations and accessible communication of uncertainty. The forecast provides an evidence baseline against which new data and policy developments can be assessed."), P("Measure and interpretation", h2), P("Table 600 counts households on local-authority housing registers. Separate housing-association lists are not included; applicants can appear on more than one authority register, and the publisher says periodic reviews and duplicate listings mean the total is likely to overstate households still requiring social housing at any one time. These registers are therefore not a complete measure of housing need. Source-noted breaks include Telford & Wrekin leaving the register series from 31 March 2021 and Epping Forest changing transfer-applicant treatment from 2022–23; no re-modelling has been applied."), P("Accessible alternative: the repository's HTML analytical report provides the structured, screen-reader-friendly version of this briefing.", small)]
 
-    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm, topMargin=18 * mm, bottomMargin=23 * mm, title="HAILIE social housing waiting-list outlook", author="HAILIE", subject="England and regional waiting-list forecasts")
+    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm, topMargin=18 * mm, bottomMargin=23 * mm, title="HAILIE social housing waiting-list outlook", author="HAILIE", subject="England and regional waiting-list forecasts", lang="en-GB", displayDocTitle=True)
     doc.build(story, onFirstPage=header_footer, onLaterPages=header_footer)
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
 

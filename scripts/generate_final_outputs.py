@@ -10,6 +10,7 @@ read the archived exploratory outputs.
 from __future__ import annotations
 
 import csv
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -92,7 +93,7 @@ def choose_model(metric_by_model: dict[str, float]) -> str:
     return min(MODEL_ORDER, key=lambda model: (metric_by_model[model], MODEL_ORDER.index(model)))
 
 
-def generate_national_outputs() -> None:
+def generate_national_outputs(check_regression: bool = False) -> None:
     years, values = national.load_england_series()
     national.validate_england_series(years, values)
 
@@ -131,9 +132,9 @@ def generate_national_outputs() -> None:
     primary_model = choose_model(primary_scores)
     extension_model = choose_model(extension_scores)
 
-    if primary_model != "damped_trend" or extension_model != "naive":
+    if check_regression and (primary_model != "damped_trend" or extension_model != "naive"):
         raise AssertionError(
-            "National model selection no longer matches the reviewed final methodology: "
+            "National model selection differs from the published run: "
             f"primary={primary_model}, extension={extension_model}"
         )
 
@@ -251,7 +252,7 @@ def generate_national_outputs() -> None:
     write_csv("national_extension_2026_2030.csv", forecast_fields, extension_rows)
 
 
-def generate_regional_outputs() -> None:
+def generate_regional_outputs(check_regression: bool = False) -> None:
     regions = regional.load_regional_series()
     regional.validate_regional_series(regions)
 
@@ -372,10 +373,10 @@ def generate_regional_outputs() -> None:
     }
     actual_primary_models = {row["region"]: row["primary_model"] for row in selection_rows}
     actual_extension_models = {row["region"]: row["extension_model"] for row in selection_rows}
-    if actual_primary_models != expected_primary_models:
-        raise AssertionError(f"Regional primary selections changed: {actual_primary_models}")
-    if actual_extension_models != expected_extension_models:
-        raise AssertionError(f"Regional extension selections changed: {actual_extension_models}")
+    if check_regression and actual_primary_models != expected_primary_models:
+        raise AssertionError(f"Regional primary selections differ from the published run: {actual_primary_models}")
+    if check_regression and actual_extension_models != expected_extension_models:
+        raise AssertionError(f"Regional extension selections differ from the published run: {actual_extension_models}")
 
     metric_fields = [
         "region",
@@ -519,12 +520,19 @@ def write_manifest() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate authoritative HAILIE forecast outputs")
+    parser.add_argument(
+        "--check-regression",
+        action="store_true",
+        help="fail if model selections differ from the published run",
+    )
+    args = parser.parse_args()
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
     warnings.filterwarnings("ignore", message="Non-invertible starting MA parameters found.*")
     warnings.filterwarnings("ignore", message="Non-stationary starting autoregressive parameters found.*")
     FINAL_OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
-    generate_national_outputs()
-    generate_regional_outputs()
+    generate_national_outputs(check_regression=args.check_regression)
+    generate_regional_outputs(check_regression=args.check_regression)
     generate_history_sensitivity()
     write_manifest()
     print("Final output generation: PASS")

@@ -85,9 +85,36 @@ def main() -> None:
     }
     actual_primary = {row["region"]: row["primary_model"] for row in loaded["regional_model_selection.csv"]}
     require(actual_primary == expected_primary, "Regional primary selections changed")
+    require(sum(model == "naive" for model in actual_primary.values()) == 6, "Expected six naive regional primary models")
 
     national_points = [round(float(row["point_forecast"])) for row in loaded["national_forecast_2026_2028.csv"]]
     require(national_points == [1348467, 1354819, 1359901], f"National forecast regression failed: {national_points}")
+    sensitivity_order = ["naive", "drift", "linear_trend", "ses", "holt", "damped_trend", "arima"]
+    expected_sensitivity = {
+        "1998": {"damped_mae": 134013, "damped_rank": 3, "naive_mae": 120905},
+        "2005": {"damped_mae": 108166, "damped_rank": 5, "naive_mae": 73809},
+    }
+    for start_year, expected in expected_sensitivity.items():
+        records = [
+            row for row in loaded["national_history_sensitivity.csv"]
+            if row["history_start_year"] == start_year
+        ]
+        scores = {
+            model: sum(
+                float(row["mae_households"])
+                for row in records
+                if row["model"] == model and row["horizon_years"] in {"1", "2", "3"}
+            )
+            / 3
+            for model in sensitivity_order
+        }
+        ranking = sorted(
+            sensitivity_order,
+            key=lambda model: (scores[model], sensitivity_order.index(model)),
+        )
+        require(round(scores["damped_trend"]) == expected["damped_mae"], f"Damped-Holt MAE changed for {start_year}")
+        require(ranking.index("damped_trend") + 1 == expected["damped_rank"], f"Damped-Holt rank changed for {start_year}")
+        require(round(scores["naive"]) == expected["naive_mae"], f"Naive MAE changed for {start_year}")
     check_intervals(loaded["national_forecast_2026_2028.csv"], "national primary")
     check_intervals(loaded["national_extension_2026_2030.csv"], "national extension")
     check_intervals(loaded["regional_forecast_2026_2028.csv"], "regional primary")
@@ -115,29 +142,69 @@ def main() -> None:
     report = (ROOT / "outputs" / "HAILIE_final_report.html").read_text(encoding="utf-8")
     for phrase in [
         "HAILIE · Evidence report", "England social housing waiting-list forecast",
-        "separate housing-association waiting list", "1,359,901", "mean Y1–Y3 MAE",
+        "Separate housing-association waiting lists", "1,359,901", "mean Y1–Y3 MAE",
         "Limitations", "History-window sensitivity",
+        "does not identify a robust national increase or decrease",
+        "134,013", "3 of 7", "108,166", "5 of 7",
+        "95% diagnostic-range warning", "only 27 errors",
+        "not stable 95% probability limits",
+        "regional backtests do not support a strong directional call",
+        "property of the model, not evidence that the register count will remain unchanged",
+        "2028 80% range", "likely to overstate households still requiring social housing",
+        "Reference dates", "Telford &amp; Wrekin", "Epping Forest",
+        "effectively equivalent baselines", "no formal Diebold–Mariano",
     ]:
         require(phrase in report, f"Final report is missing: {phrase}")
     require("Illustrative 2026" not in report, "Archived report language remains")
+    require('<th scope="col">Direction</th>' not in report, "Regional report still presents a direction column")
     for private_phrase in ["internal review matrix", "named reviewer", "unfinished work register"]:
         require(private_phrase not in report, f"Public report contains internal wording: {private_phrase}")
     require("<html lang=\"en\">" in report and "Skip to main content" in report, "Accessibility shell missing")
+    require('alt="Line chart of England households' in report and 'alt="Small-multiple line charts' in report, "Report chart alt text missing")
+    require("#9a6a00" in report, "Report focus indicator contrast token missing")
     dashboard = (ROOT / "outputs" / "HAILIE_dashboard.html").read_text(encoding="utf-8")
-    for phrase in ["Interactive forecast dashboard", "Where could waiting lists be heading?", "Regional picture", "2026–2030 planning"]:
+    for phrase in [
+        "Interactive forecast dashboard", "Where could waiting lists be heading?",
+        "Regional picture", "2026–2030 planning",
+        "does not identify a robust national increase or decrease",
+        "National history-window sensitivity",
+        "Shading shows the empirical 80% range",
+        "Six of nine regions use a naive model",
+        "model properties, not evidence of stability",
+        "2028 80% range", "Source-noted breaks include Telford", "publisher says the total is likely to overstate",
+    ]:
         require(phrase in dashboard, f"Dashboard is missing: {phrase}")
     for private_phrase in ["internal review matrix", "named reviewer", "unfinished work register"]:
         require(private_phrase not in dashboard, f"Dashboard contains internal wording: {private_phrase}")
+    require("lower95" not in dashboard and "upper95" not in dashboard, "Dashboard still embeds 95% bounds")
+    require("<th>95% range</th>" not in dashboard, "Dashboard still publishes a 95% range column")
+    require("<th>Change</th>" not in dashboard, "Regional dashboard still presents an unsupported change column")
+    require('aria-pressed="true"' in dashboard and 'aria-live="polite"' in dashboard, "Dashboard state accessibility attributes missing")
+    require('scope="col"' in dashboard and 'aria-hidden="true"' not in dashboard, "Dashboard table/legend accessibility attributes missing")
+    require("#9a6a00" in dashboard and "--teal:#0d6f68" in dashboard, "Dashboard contrast tokens missing")
+    require("No uncertainty was computed for these regional extension points" in dashboard, "Dashboard regional extension warning missing")
+    public_chart_builder = (ROOT / "scripts" / "build_public_charts.py").read_text(encoding="utf-8")
+    require("lower_95" not in public_chart_builder and "upper_95" not in public_chart_builder, "Public chart still draws 95% bounds")
+    briefing_builder = (ROOT / "scripts" / "build_public_briefing.py").read_text(encoding="utf-8")
+    require("lower_95" not in briefing_builder and "upper_95" not in briefing_builder, "Public briefing still publishes 95% bounds")
+    require("regional_model_selection.csv" in briefing_builder, "Briefing regional table is missing model selections")
+    require("row['lower_80']" in briefing_builder and "row['upper_80']" in briefing_builder, "Briefing regional table is missing 80% ranges")
+    require("Regional backtests do not support a strong directional call" in briefing_builder, "Briefing regional caveat is missing")
+    require("Most regions are broadly stable" not in briefing_builder, "Briefing still presents regional stability as a finding")
+    require("xerr=[lower_errors, upper_errors]" in public_chart_builder, "Regional chart is missing 80% error bars")
     briefing = ROOT / "outputs" / "pdf" / "HAILIE_social_housing_waiting_list_briefing.pdf"
     require(briefing.exists() and briefing.stat().st_size > 100_000, "Public briefing PDF is missing or unexpectedly small")
     require(not (ROOT / "data" / "raw" / "~$Live_Table_600.ods").exists(), "Office lock file remains")
 
     print("Final output schemas and row counts: PASS")
     print("Model selections and forecast regression checks: PASS")
+    print("National history-window sensitivity regression checks: PASS")
+    print("Public 80%-only uncertainty presentation checks: PASS")
+    print("Regional carry-forward wording and 80% range checks: PASS")
     print("Prediction interval ordering and finite values: PASS")
     print("Regional-to-national reconciliation (39 years): PASS")
     print("Reproducibility manifest hashes: PASS")
-    print("Final report content and accessibility shell: PASS")
+    print("Report language, skip link and chart accessibility checks: PASS")
     print("FINAL PUBLICATION QA: PASS")
 
 

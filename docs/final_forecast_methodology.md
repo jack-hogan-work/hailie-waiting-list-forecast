@@ -23,6 +23,8 @@ extension covers 2026–2030.
 - Missing England observations: none.
 - Additional numerical imputations by this project: none.
 - Regional reconciliation: the nine regions sum to England in all 39 years.
+- Reference dates: 1 April up to 2018 and 31 March from 2019 onward.
+- Data retrieved: 7 August 2026.
 
 Publisher-supplied imputations, suppression markers and genuine zeroes are
 audited separately in `docs/missing_data_and_imputation.md`. The model treats
@@ -46,6 +48,11 @@ Seasonal models were not used because the observations are annual and contain
 no within-year seasonal frequency. The final models use the annual register
 series directly and are interpreted as statistical forecasts rather than
 causal estimates.
+
+Although seven candidate labels are evaluated, the restricted ARIMA search
+selects `(0,1,0)` on this series and simple exponential smoothing converges to
+alpha approximately 1, so both reproduce the naive carry-forward in many
+windows. They should not be read as seven wholly distinct forecasts.
 
 ## Rolling-origin backtesting
 
@@ -76,27 +83,37 @@ The rules were applied consistently:
 - 2026–2030 extension model: lowest 5-year MAE.
 - Tie-break: prefer the simpler, more interpretable model where performance is equal or effectively indistinguishable.
 
+Selection differences are descriptive only. Forecast origins overlap, and no
+formal Diebold–Mariano or equivalent test was used; small MAE gaps should not
+be treated as statistically significant.
+
 The national primary winner is damped Holt, with mean Y1–Y3 MAE of about
 115,961 households. The five-year naive model has MAE of about 306,435 and is
 selected over effectively equivalent SES and ARIMA results on parsimony.
 
 ## Final national results
 
-| Year | Primary point forecast | 80% interval | 95% interval |
+| Year | Primary point forecast | 80% interval | 95% diagnostic range |
 |---|---:|---:|---:|
 | 2026 | 1,348,467 | 1,288,128–1,420,408 | 1,168,582–1,494,999 |
 | 2027 | 1,354,819 | 1,183,078–1,510,443 | 1,013,012–1,656,568 |
 | 2028 | 1,359,901 | 1,169,171–1,667,851 | 736,752–1,857,482 |
 
-The forecast rises from 1,340,527 households in 2025 to approximately 1.36
-million in 2028, an increase of about 1.4%. This is a modest direction signal,
-not evidence for a large or certain rise.
+The evidence does not identify a robust national increase or decrease over the
+next three years. The damped-Holt model selected on the full 1987–2025 history
+gives a central estimate of 1,359,901 households in 2028, 1.4% above 2025, but
+naive performs better in both later-history sensitivity windows.
 
 The naive extension holds the 2025 observation constant through 2030. The
 2026–2028 differences between the primary and extension tracks are about
 7,940, 14,292 and 19,374 households respectively. These differences are small
 relative to the empirical prediction intervals and are not materially
 contradictory.
+
+The 2029 uncertainty interval uses a separate four-year backtest only for
+interval construction. That horizon is not included in the published metrics
+CSV, so the interval is a diagnostic extension rather than a separately
+validated model-selection result.
 
 ## Final regional selections
 
@@ -116,31 +133,66 @@ One model is selected for all three primary forecast years in each region. This
 avoids switching methods between adjacent years merely because one individual
 horizon produces a marginally lower error.
 
+For six of the nine regions, the primary winner is naive. Their 2028 central
+estimates therefore repeat the 2025 observations by construction. This is a
+property of the selected carry-forward model, not evidence that the underlying
+register counts will remain unchanged. The regional backtests do not support a
+strong directional call, so public regional presentation pairs every central
+estimate with its selected model and 80% empirical range.
+
+Two source-noted regional comparability breaks should remain visible when these
+forecasts are used: Telford & Wrekin stopped operating a housing register from
+31 March 2021, affecting the West Midlands and England totals, and Epping
+Forest changed its treatment of transfer applicants from 2022–23, affecting the
+East of England series. No re-modelling was applied for these breaks.
+
 ## Prediction intervals
 
 For a selected model and horizon, the historical rolling-origin forecast
 errors at that horizon form an empirical error distribution. The 10th/90th
 percentile and 2.5th/97.5th percentile error quantiles are applied to the final
-point forecast to produce 80% and 95% intervals. NumPy linear interpolation is
-used for sample quantiles in both national and regional pipelines.
+point forecast to produce 80% and 95% empirical ranges. NumPy linear
+interpolation is used for sample quantiles in both national and regional
+pipelines.
 
-These intervals capture historically observed model error. They do not fully
-capture administrative change, source revisions, boundary changes, policy
-shocks, economic shocks or uncertainty associated with publisher imputation.
+The primary three-year backtest contains only 27 errors. At that sample size,
+each 2.5th/97.5th percentile bound is interpolated from the first and second
+most extreme observations. Those extremes include periods associated with the
+introduction of choice-based lettings around 2003 and qualification changes
+following the Localism Act 2011. The 95% ranges are therefore highly sensitive
+to a few identifiable historical regime changes and should not be interpreted
+as stable 95% probability limits for the next three years.
+
+The public dashboard and briefing show the 80% ranges only. The 95% figures are
+retained in this technical methodology, the analytical report and the
+machine-readable outputs as diagnostic historical ranges for transparency.
+Neither range captures every possible administrative change, source revision,
+boundary change, policy or economic shock, or uncertainty associated with
+publisher imputation.
 
 ## History-window sensitivity
 
 The national comparison was repeated using only 1998–2025 and 2005–2025. The
-primary Y1–Y3 winner changes from damped Holt on the pre-specified full history
-to naive from 1998 and ARIMA from 2005. The naive model remains the five-year
-winner in both shorter windows. The 2005 ARIMA advantage over naive is small
-(mean Y1–Y3 MAE about 73,288 versus 73,809 households).
+selected full-history damped-Holt model's later-window performance is shown
+explicitly below. Rankings use mean MAE across the one-, two- and three-year
+backtests; lower is better.
+
+| History window | Y1–Y3 winner | Winner mean MAE | Damped-Holt mean MAE | Damped-Holt rank | Naive mean MAE |
+|---|---|---:|---:|---:|---:|
+| 1987–2025 (pre-specified full history) | Damped Holt | 115,961 | 115,961 | 1 of 7 | 124,554 |
+| 1998–2025 | Naive | 120,905 | 134,013 | 3 of 7 | 120,905 |
+| 2005–2025 | ARIMA | 73,288 | 108,166 | 5 of 7 | 73,809 |
+
+Naive therefore outperforms damped Holt in both later-history windows,
+especially in the 2005–2025 window. The 2005 ARIMA advantage over naive is
+small (mean Y1–Y3 MAE about 73,288 versus 73,809 households). The naive model
+also remains the five-year winner in both shorter windows.
 
 These MAEs are not directly comparable across windows because the later
 windows contain fewer and different forecast origins. The result shows that the
 identity of the best near-term model is sensitive to historical coverage. It
-does not overturn the full-history pre-specified selection, but it strengthens
-the cautious interpretation and the decision to foreground uncertainty.
+does not change the preserved full-history selection or its central estimate,
+but it means the evidence does not support a robust directional national claim.
 
 ## Limitations
 
@@ -150,6 +202,7 @@ the cautious interpretation and the decision to foreground uncertainty.
 - Longer-horizon backtest origins overlap and are not independent trials.
 - Regional models are independent and are not constrained to sum to the national forecast.
 - The alternative-window check is not a formal causal analysis of individual policy breaks.
+- The regional 2026–2030 extension contains point forecasts without calculated uncertainty bands and should not be used as a standalone planning forecast.
 
 The full-precision metrics, selections, forecasts and reproducibility hashes
 are stored in `outputs/final/`.
