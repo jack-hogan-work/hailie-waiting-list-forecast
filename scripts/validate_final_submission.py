@@ -168,8 +168,9 @@ def main() -> None:
     require("Telford" in readme and "Epping Forest" in readme and "no uncertainty was computed for" in readme, "README limitations are missing regional caveats")
     dashboard = (ROOT / "outputs" / "HAILIE_dashboard.html").read_text(encoding="utf-8")
     for phrase in [
-        "Interactive forecast dashboard", "Where could waiting lists be heading?",
-        "Regional picture", "2026–2030 planning",
+        "Interactive forecast dashboard", "Social housing waiting-list forecast for England",
+        "England and regional picture",
+        "3-year forecast", "5-year forecast",
         "does not identify a robust national increase or decrease",
         "National history-window sensitivity",
         "Shading shows the empirical 80% range",
@@ -180,15 +181,26 @@ def main() -> None:
         require(phrase in dashboard, f"Dashboard is missing: {phrase}")
     for private_phrase in ["internal review matrix", "named reviewer", "unfinished work register"]:
         require(private_phrase not in dashboard, f"Dashboard contains internal wording: {private_phrase}")
+    require("Where could waiting lists be heading?" not in dashboard, "Dashboard retains the superseded informal headline")
     require("lower95" not in dashboard and "upper95" not in dashboard, "Dashboard still embeds 95% bounds")
     require("<th>95% range</th>" not in dashboard, "Dashboard still publishes a 95% range column")
     require("<th>Change</th>" not in dashboard, "Regional dashboard still presents an unsupported change column")
     require('aria-pressed="true"' in dashboard and 'aria-live="polite"' in dashboard, "Dashboard state accessibility attributes missing")
     require('scope="col"' in dashboard and 'aria-hidden="true"' not in dashboard, "Dashboard table/legend accessibility attributes missing")
+    require('<th>History window</th>' not in dashboard and '<th scope="col">History window</th>' in dashboard, "Dashboard sensitivity headers are missing column scope")
     require("#9a6a00" in dashboard and "--teal:#0d6f68" in dashboard, "Dashboard contrast tokens missing")
-    require("No uncertainty was computed for these regional extension points" in dashboard, "Dashboard regional extension warning missing")
-    require("this five-year England extension includes an empirical 80% range" in dashboard, "England extension range wording missing")
+    require("No uncertainty was computed for these regional five-year points" in dashboard, "Dashboard regional extension warning missing")
+    require("includes an empirical 80% range, which widens with the forecast horizon" in dashboard, "England extension range wording missing")
+    require("This makes the central line flat; it is not a prediction that waiting-list demand will remain unchanged" in dashboard, "Dashboard five-year flat-path explanation missing")
+    require("Chosen by five-year backtest MAE" in dashboard, "Dashboard five-year model-selection explanation missing")
+    require("equal-lowest on five-year backtest MAE" in dashboard and "documented parsimony tie-break" in dashboard, "Dashboard England five-year tie wording missing")
+    require(dashboard.count('"extension_y5_mae":') == 10, "Dashboard is missing a five-year MAE value for one or more areas")
     require(".grid>.panel{min-width:0}" in dashboard, "Dashboard grid reflow safeguard missing")
+    require('<a href="HAILIE_final_report.html">technical report</a>' in dashboard, "Chart technical-report link missing")
+    require("Households on local-authority housing registers" in dashboard and "fillText('Year'" in dashboard, "Dashboard chart axis labels missing")
+    require("function niceStep(span)" in dashboard and "min+(max-min)*i/4" not in dashboard, "Dashboard Y-axis ticks are not rounded to readable intervals")
+    require("chart-title').textContent=`${item.name}: observed and forecast households`" in dashboard, "Dashboard chart title is not geography-specific")
+    require("function ranking(){const areas=Object.entries(DATA).map" in dashboard and "England and regional models" in dashboard, "England is missing from the comparison table")
     archive_html = list((ROOT / "archive").rglob("*.html"))
     require(archive_html, "No archived HTML reports found")
     for path in archive_html:
